@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         THE MOST IMPORTANT LINES IN THIS FILE ARE THE ONES THAT ARE ABSENT:
+
+             android.permission.INTERNET          → NEVER
+             android.permission.ACCESS_NETWORK_STATE → NEVER
+
+         Janadhikar's entire trust model rests on this manifest being
+         auditable by anyone. The build fails if a dependency merges a
+         network permission in (see :app verifyNoInternetPermission task).
+         ═══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Voice input path (whisper.cpp). Requested at runtime, only on first
+         mic use. Typed-text input works without granting this. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Emergency SOS dispatch. SMS is the only channel that works with
+         zero data connectivity. Requested at runtime during SOS setup. -->
+    <uses-permission android:name="android.permission.SEND_SMS" />
+
+    <!-- Keep the pipeline alive if the user locks the screen mid-incident. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
+    <application
+        android:name=".JanadhikarApp"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:hardwareAccelerated="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:largeHeap="true"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Janadhikar"
+        tools:targetApi="35">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:configChanges="orientation|screenSize|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Foreground service that owns the mic + inference pipeline during
+             an active incident, so a screen lock never kills the shield. -->
+        <service
+            android:name=".engine.IncidentPipelineService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+    </application>
+</manifest>

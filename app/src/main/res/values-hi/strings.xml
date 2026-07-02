@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">जनाधिकार</string>
+
+    <!-- अस्वीकृति वाक्य एक उत्पाद स्थिरांक है (CONTRIBUTING.md नियम 3)। -->
+    <string name="no_verified_statute">कोई सत्यापित कानूनी धारा नहीं मिली। अनुमान न लगाएँ।</string>
+
+    <!-- Trigger -->
+    <string name="trigger_hint_hold">बोलने के लिए टैप करें, या वॉल्यूम-डाउन दबाए रखें</string>
+    <string name="trigger_type_hint">या अपनी स्थिति लिखें…</string>
+    <string name="trigger_submit">मेरे अधिकार खोजें</string>
+    <string name="warming_up">ऑफ़लाइन इंजन तैयार हो रहा है…</string>
+    <string name="mic_button">बोलें</string>
+
+    <!-- Active -->
+    <string name="active_listening">सुन रहा है…</string>
+    <string name="active_transcribing">लिख रहा है…</string>
+    <string name="active_searching">सत्यापित धाराओं में खोज जारी…</string>
+    <string name="active_translating">आपका निर्देश तैयार हो रहा है…</string>
+    <string name="tap_to_stop">बोलना पूरा होने पर टैप करें</string>
+
+    <!-- Resolution: citation card -->
+    <string name="verified_record">सत्यापित अभिलेख</string>
+    <string name="statute_label">क़ानून</string>
+    <string name="section_label">धारा</string>
+    <string name="clause_label">खंड</string>
+    <string name="page_label">पृष्ठ</string>
+    <string name="source_label">स्रोत</string>
+    <string name="compiled_label">सत्यापन तिथि</string>
+    <string name="related_provisions">संबंधित प्रावधान</string>
+    <string name="verbatim_shown">क़ानून का यथावत पाठ दिखाया गया है</string>
+    <string name="superseded_redirect">वर्तमान में लागू क़ानून के अनुसार अद्यतन</string>
+
+    <!-- Resolution: actions -->
+    <string name="done">पूर्ण</string>
+    <string name="mic_error">माइक्रोफ़ोन उपलब्ध नहीं। आप अपनी स्थिति लिख सकते हैं।</string>
+
+    <!-- SOS -->
+    <string name="sos_countdown">आपातकालीन SMS %1$d सेकंड में</string>
+    <string name="sos_cancel">रद्द करने के लिए स्लाइड करें</string>
+    <string name="sos_sent">आपातकालीन SMS भेजा गया</string>
+    <string name="sos_cancelled">आपातकालीन SMS रद्द</string>
+    <string name="sos_not_configured">SOS संपर्क सेट नहीं है</string>
+    <string name="sos_failed">SMS विफल — आपातकालीन संपर्क जाँचें</string>
+    <string name="sos_message_body">आपातकाल (जनाधिकार): मुझे कानूनी सहायता चाहिए। यह एक स्वचालित सूचना है।</string>
+</resources>

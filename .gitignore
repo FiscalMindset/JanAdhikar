@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Native
+.cxx/
+
+# Model artifacts — too large for git; fetched via scripts/fetch_models.sh
+app/src/main/assets/models/*.tflite
+app/src/main/assets/models/*.task
+app/src/main/assets/models/*.bin
+
+# Compiled knowledge base — built by knowledge-pipeline/, not hand-edited
+app/src/main/assets/db/*.db
+
+# Vendored submodule build outputs
+external/**/build/

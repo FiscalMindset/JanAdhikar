@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Janadhikar</string>
+
+    <!-- The refusal string is a PRODUCT CONSTANT (CONTRIBUTING.md Rule 3).
+         Never reword without maintainer sign-off. -->
+    <string name="no_verified_statute">No verified legal statute found. Do not speculate.</string>
+
+    <!-- Trigger -->
+    <string name="trigger_hint_hold">Tap to speak, or hold Volume-Down</string>
+    <string name="trigger_type_hint">Or type your situation…</string>
+    <string name="trigger_submit">Find my rights</string>
+    <string name="warming_up">Preparing offline engine…</string>
+    <string name="mic_button">Speak</string>
+
+    <!-- Active -->
+    <string name="active_listening">Listening…</string>
+    <string name="active_transcribing">Transcribing…</string>
+    <string name="active_searching">Searching verified statutes…</string>
+    <string name="active_translating">Preparing your directive…</string>
+    <string name="tap_to_stop">TAP WHEN DONE SPEAKING</string>
+
+    <!-- Resolution: citation card -->
+    <string name="verified_record">VERIFIED RECORD</string>
+    <string name="statute_label">Statute</string>
+    <string name="section_label">Section</string>
+    <string name="clause_label">Clause</string>
+    <string name="page_label">Page</string>
+    <string name="source_label">Source</string>
+    <string name="compiled_label">Verified as of</string>
+    <string name="related_provisions">Related provisions</string>
+    <string name="verbatim_shown">Exact text of the law shown</string>
+    <string name="superseded_redirect">Updated to the law currently in force</string>
+
+    <!-- Resolution: actions -->
+    <string name="done">DONE</string>
+    <string name="mic_error">Microphone unavailable. You can still type your situation.</string>
+
+    <!-- SOS -->
+    <string name="sos_countdown">Emergency SMS in %1$d s</string>
+    <string name="sos_cancel">Slide to cancel</string>
+    <string name="sos_sent">Emergency SMS sent</string>
+    <string name="sos_cancelled">Emergency SMS cancelled</string>
+    <string name="sos_not_configured">SOS contact not set</string>
+    <string name="sos_failed">SMS failed — check emergency contact</string>
+    <string name="sos_message_body">EMERGENCY (Janadhikar): I need legal help. This is an automated alert.</string>
+</resources>
