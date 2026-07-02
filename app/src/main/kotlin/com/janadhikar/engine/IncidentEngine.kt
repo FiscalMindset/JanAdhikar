@@ -6,6 +6,7 @@ import com.janadhikar.input.QueryNormalizer
 import com.janadhikar.llm.Directive
 import com.janadhikar.memory.model.RetrievalResult
 import com.janadhikar.memory.model.VerifiedCitation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -85,6 +86,11 @@ class IncidentEngine(
                         }
                     }
                 }
+            } catch (e: CancellationException) {
+                // Normal teardown (stopAndResolve/cancel). MUST be rethrown, not
+                // reported: on the JVM CancellationException IS-A
+                // IllegalStateException and would otherwise be caught below.
+                throw e
             } catch (e: SecurityException) {
                 _state.value = IncidentState.Failure("mic permission: ${e.message}")
             } catch (e: IllegalStateException) {

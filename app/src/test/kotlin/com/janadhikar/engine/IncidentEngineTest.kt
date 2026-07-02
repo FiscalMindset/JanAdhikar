@@ -8,6 +8,7 @@ import com.janadhikar.memory.model.RetrievalResult
 import com.janadhikar.memory.model.VerifiedCitation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
@@ -139,6 +140,8 @@ class IncidentEngineTest {
             skipItems(1) // Idle
             engine.startVoiceCapture()
             skipItems(1) // Active LISTENING
+            runCurrent() // let the capture coroutine subscribe before emitting —
+            //              a SharedFlow emission with zero subscribers is dropped
             audio.emit(FloatArray(1600)) // some audio arrived
 
             engine.stopAndResolve()

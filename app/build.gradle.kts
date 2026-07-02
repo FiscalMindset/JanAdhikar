@@ -1,4 +1,4 @@
-import com.android.build.gradle.tasks.ProcessApplicationManifest
+import com.android.build.api.artifact.SingleArtifact
 
 plugins {
     alias(libs.plugins.android.application)
@@ -155,36 +155,42 @@ dependencies {
  * appears in the MERGED manifest — i.e. even if a transitive dependency
  * sneaks it in. This is the CI tripwire behind the app's core promise.
  */
-androidComponents {
-    onVariants { variant ->
-        val variantName = variant.name.replaceFirstChar { it.uppercase() }
-        tasks.register("verifyNoInternetPermission$variantName") {
-            val manifestDir = layout.buildDirectory.dir("intermediates/merged_manifests/${variant.name}")
-            inputs.dir(manifestDir)
-            doLast {
-                val forbidden = listOf(
-                    "android.permission.INTERNET",
-                    "android.permission.ACCESS_NETWORK_STATE",
-                )
-                manifestDir.get().asFileTree.matching { include("**/AndroidManifest.xml") }.forEach { manifest ->
-                    val text = manifest.readText()
-                    forbidden.forEach { permission ->
-                        check(permission !in text) {
-                            "ZERO-NETWORK VIOLATION: '$permission' found in merged manifest " +
-                                "(${manifest.path}). A dependency has introduced network access. " +
-                                "This build is forbidden. See CONTRIBUTING.md Rule 5."
-                        }
-                    }
-                }
-                logger.lifecycle("✔ Zero-network check passed: merged manifest contains no network permissions.")
+abstract class VerifyNoInternetPermissionTask : DefaultTask() {
+    @get:InputFile
+    abstract val mergedManifest: RegularFileProperty
+
+    @TaskAction
+    fun verify() {
+        val manifest = mergedManifest.get().asFile
+        val text = manifest.readText()
+        listOf(
+            "android.permission.INTERNET",
+            "android.permission.ACCESS_NETWORK_STATE",
+        ).forEach { permission ->
+            check(permission !in text) {
+                "ZERO-NETWORK VIOLATION: '$permission' found in merged manifest " +
+                    "(${manifest.path}). A dependency has introduced network access. " +
+                    "This build is forbidden. See CONTRIBUTING.md Rule 5."
             }
         }
+        logger.lifecycle("✔ Zero-network check passed: merged manifest contains no network permissions.")
     }
 }
 
-// Hook the tripwire into every assemble so it can never be skipped.
-tasks.withType<ProcessApplicationManifest>().configureEach {
-    finalizedBy(
-        "verifyNoInternetPermission${name.removePrefix("process").removeSuffix("MainManifest").replaceFirstChar { it.uppercase() }}",
-    )
+androidComponents {
+    onVariants { variant ->
+        val variantName = variant.name.replaceFirstChar { it.uppercase() }
+        val verifyTask = tasks.register<VerifyNoInternetPermissionTask>(
+            "verifyNoInternetPermission$variantName",
+        ) {
+            // Typed artifact API: carries the processManifest dependency automatically.
+            mergedManifest.set(variant.artifacts.get(SingleArtifact.MERGED_MANIFEST))
+        }
+        // Hook into every assemble/check so the tripwire can never be skipped.
+        tasks.configureEach {
+            if (name == "assemble$variantName" || name == "check") {
+                dependsOn(verifyTask)
+            }
+        }
+    }
 }
