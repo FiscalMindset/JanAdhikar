@@ -1,6 +1,7 @@
 # ── JNI bridges: called reflectively from native code, must not be renamed ──
 -keep class com.janadhikar.stt.WhisperBridge { *; }
 -keep class com.janadhikar.memory.vec.SqliteVecBridge { *; }
+-keep class com.janadhikar.llm.LlamaBridge { *; }
 
 # ── MediaPipe GenAI / LiteRT ──
 -keep class com.google.mediapipe.** { *; }

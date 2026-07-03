@@ -31,3 +31,8 @@ external/**/build/
 *.gguf
 app/src/main/assets/models/*.gguf
 app/src/main/assets/models/
+
+# Release signing — NEVER commit these
+*.keystore
+*.jks
+keystore.properties
