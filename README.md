@@ -34,7 +34,7 @@ Every answer links to the<br/><b>exact bare-act text</b> +<br/>the official PDF 
 </tr>
 </table>
 
-**📐 [Architecture & diagrams →](ARCHITECTURE.md)**  ·  **🤝 [Contributing →](CONTRIBUTING.md)**  ·  **📚 [Knowledge base →](knowledge_database.md)**
+**🏠 README** · **[📐 Architecture](ARCHITECTURE.md)** · **[🤝 Contributing](CONTRIBUTING.md)** · **[📚 Knowledge](knowledge_database.md)** · **[🧠 Cognee](COGNEE.md)**
 
 </div>
 

@@ -1,5 +1,7 @@
 # 🏛 Janadhikar — Architecture
 
+**[🏠 README](README.md)** · **📐 Architecture** · **[🤝 Contributing](CONTRIBUTING.md)** · **[📚 Knowledge](knowledge_database.md)** · **[🧠 Cognee](COGNEE.md)**
+
 > An on-device legal assistant for Indian citizens. Ask about your rights in
 > plain words (typed or spoken, English/Hindi/Hinglish) and get a clear,
 > grounded answer with the exact law behind it — running **on the phone** after
@@ -51,8 +53,8 @@ flowchart TB
     ENG --> QWEN
     ENG --> GEMMA
     ENG --> VERB
-    HF -. "first-run download<br/>(Qwen GGUF, Whisper)" .-> Brains
-    HF -. .-> VOICE
+    HF -. "first-run download<br/>Qwen GGUF" .-> Brains
+    HF -. "first-run download<br/>Whisper" .-> VOICE
     ENG --> UI
 
     classDef offline fill:#0d1b2a,stroke:#7EE0B0,color:#e0e0e0

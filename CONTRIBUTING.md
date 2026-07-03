@@ -1,5 +1,7 @@
 # 🤝 Contributing to Janadhikar
 
+**[🏠 README](README.md)** · **[📐 Architecture](ARCHITECTURE.md)** · **🤝 Contributing** · **[📚 Knowledge](knowledge_database.md)** · **[🧠 Cognee](COGNEE.md)**
+
 Thank you for helping build a tool people will rely on in stressful moments.
 That sentence is the design constraint behind every rule here.
 

@@ -1,5 +1,7 @@
 # COGNEE.md — How Janadhikar Uses Cognee
 
+**[🏠 README](README.md)** · **[📐 Architecture](ARCHITECTURE.md)** · **[🤝 Contributing](CONTRIBUTING.md)** · **[📚 Knowledge](knowledge_database.md)** · **🧠 Cognee**
+
 > **TL;DR:** Cognee runs **only at build time, on a desktop**. It compiles official
 > legal PDFs into a knowledge graph, which we flatten into plain SQLite tables and
 > ship **inside the APK**. **No Cognee code, no Python, and no knowledge-base
