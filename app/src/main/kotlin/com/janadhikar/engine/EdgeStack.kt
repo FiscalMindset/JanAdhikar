@@ -47,6 +47,15 @@ class EdgeStack private constructor(
 
     enum class ModelStatus { LOADING, READY, UNAVAILABLE }
 
+    /** One on-device model's identity + live state, for the Settings screen. */
+    data class ModelInfo(
+        val label: String,
+        val type: String,
+        val fileName: String,
+        val approxSizeMb: Int,
+        val status: ModelStatus,
+    )
+
     /**
      * What the user can see is loaded. Knowledge base + search embedder are
      * always READY here (create() only returns once they are). Voice and the
@@ -57,7 +66,15 @@ class EdgeStack private constructor(
         val searchEngine: ModelStatus = ModelStatus.READY,
         val voice: ModelStatus = ModelStatus.LOADING,
         val translator: ModelStatus = ModelStatus.LOADING,
-    )
+    ) {
+        /** Detailed per-model list for the Settings screen. */
+        fun models(): List<ModelInfo> = listOf(
+            ModelInfo("Knowledge base", "SQLite + sqlite-vec + FTS5", "janadhikar_knowledge.db", 13, knowledgeBase),
+            ModelInfo("Search model", "MiniLM-L12-v2 embedder (384-d, LiteRT)", "embedder_minilm_384.tflite", 113, searchEngine),
+            ModelInfo("AI translator", "Gemma 3 1B (4-bit, LiteRT)", "gemma3-1b-it-int4.task", 529, translator),
+            ModelInfo("Voice (STT)", "whisper small (multilingual, q5)", "ggml-small-q5_1.bin", 181, voice),
+        )
+    }
 
     override fun close() {
         engine.cancelVoice()

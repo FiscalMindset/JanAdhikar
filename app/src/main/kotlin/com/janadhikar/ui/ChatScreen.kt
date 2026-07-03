@@ -72,6 +72,8 @@ fun ChatScreen(
     modifier: Modifier = Modifier,
     warmupStage: String = "",
     warmupFailed: Boolean = false,
+    onSettings: () -> Unit = {},
+    onNewChat: () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     LaunchedEffect(turns.size) {
@@ -79,6 +81,7 @@ fun ChatScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
+        TopBar(onNewChat = onNewChat, onSettings = onSettings, showNewChat = turns.isNotEmpty())
         if (turns.isEmpty()) {
             EmptyState(engineReady, warmupStage, warmupFailed, modifier = Modifier.weight(1f))
         } else {
@@ -92,6 +95,36 @@ fun ChatScreen(
             }
         }
         InputBar(engineReady = engineReady, onAsk = onAsk, onMic = onMic)
+    }
+}
+
+@Composable
+private fun TopBar(onNewChat: () -> Unit, onSettings: () -> Unit, showNewChat: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.titleLarge,
+            color = Palette.DimGray,
+        )
+        Spacer(Modifier.weight(1f))
+        if (showNewChat) {
+            Text(
+                text = "✎ " + stringResource(R.string.new_chat),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Palette.DirectiveYellow,
+                modifier = Modifier.clickable(onClick = onNewChat).testTag("new_chat").padding(6.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+        }
+        Text(
+            text = "⚙",
+            style = MaterialTheme.typography.titleLarge,
+            color = Palette.DimGray,
+            modifier = Modifier.clickable(onClick = onSettings).testTag("settings_button").padding(6.dp),
+        )
     }
 }
 

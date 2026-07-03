@@ -7,6 +7,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.janadhikar.engine.CaptureState
 import com.janadhikar.engine.EdgeStack
@@ -47,12 +50,26 @@ fun JanadhikarRoot(
 
                 val turns by stack.engine.conversation.collectAsState()
                 val capture by stack.engine.capture.collectAsState()
+                var showSettings by remember { mutableStateOf(false) }
+
+                if (showSettings) {
+                    val status by stack.status.collectAsState()
+                    val usage by stack.engine.usageLog.collectAsState()
+                    SettingsScreen(
+                        models = status.models(),
+                        usage = usage,
+                        onBack = { showSettings = false },
+                    )
+                    return@Box
+                }
 
                 ChatScreen(
                     turns = turns,
                     engineReady = true,
                     onAsk = stack.engine::ask,
                     onMic = onVoiceRequested,
+                    onSettings = { showSettings = true },
+                    onNewChat = stack.engine::clear,
                 )
 
                 when (val c = capture) {

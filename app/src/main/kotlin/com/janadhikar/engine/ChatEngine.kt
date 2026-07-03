@@ -46,6 +46,18 @@ class ChatEngine(
     private val _capture = MutableStateFlow<CaptureState>(CaptureState.Idle)
     val capture: StateFlow<CaptureState> = _capture.asStateFlow()
 
+    /** One line per resolved question, newest first — the Settings usage log. */
+    data class UsageEntry(
+        val query: String,
+        val outcome: String, // "answered" | "refused"
+        val citation: String, // e.g. "BNS Section 303" or "—"
+        val model: String,
+        val elapsedMillis: Long,
+    )
+
+    private val _usageLog = MutableStateFlow<List<UsageEntry>>(emptyList())
+    val usageLog: StateFlow<List<UsageEntry>> = _usageLog.asStateFlow()
+
     private var nextId = 0L
     private var captureJob: Job? = null
     private var pcmWindow = FloatArray(0)
@@ -66,6 +78,7 @@ class ChatEngine(
         }
         appendTurn(Turn(id, query.text, Answer.Thinking))
         scope.launch {
+            val startedAt = clock()
             val answer = try {
                 when (val result = retrieve(query)) {
                     is RetrievalResult.NoVerifiedStatute -> Answer.NoStatute
@@ -86,7 +99,24 @@ class ChatEngine(
                 Answer.NoStatute // never crash a turn — refuse instead
             }
             updateTurn(id) { it.copy(answer = answer) }
+            logUsage(query.text, answer, clock() - startedAt)
         }
+    }
+
+    private fun logUsage(query: String, answer: Answer, elapsed: Long) {
+        val entry = when (answer) {
+            is Answer.Grounded -> UsageEntry(
+                query = query,
+                outcome = "answered",
+                citation = answer.citations.firstOrNull()
+                    ?.let { "${it.statuteName.substringBefore(",")} ${it.unit.lowercase().replaceFirstChar { c -> c.uppercase() }} ${it.sectionNumber}" }
+                    ?: "—",
+                model = (answer.explanation.modelId),
+                elapsedMillis = elapsed,
+            )
+            else -> UsageEntry(query, "refused", "—", "—", elapsed)
+        }
+        _usageLog.value = (listOf(entry) + _usageLog.value).take(MAX_USAGE_LOG)
     }
 
     fun clear() {
@@ -161,5 +191,6 @@ class ChatEngine(
     companion object {
         const val MAX_CAPTURE_MILLIS = 60_000L
         private const val LIVE_DECODE_SAMPLES = (2.5 * 16_000).toInt()
+        private const val MAX_USAGE_LOG = 100
     }
 }

@@ -48,7 +48,11 @@ class GemmaTranslator(
         context,
         LlmInference.LlmInferenceOptions.builder()
             .setModelPath(modelFile.absolutePath)
-            .setMaxTokens(MAX_TOKENS)
+            // TOTAL sequence budget (input prompt + output). The prompt embeds
+            // the full verbatim statute text (often 400–500 tokens), so this
+            // MUST be large — a small value made LiteRT abort (SIGABRT) because
+            // the input alone overflowed the sequence.
+            .setMaxTokens(MAX_SEQUENCE_TOKENS)
             .setMaxTopK(TOP_K)
             .build(),
     )
@@ -98,8 +102,12 @@ class GemmaTranslator(
         const val MODEL_ASSET = "models/gemma3-1b-it-int4.task"
         const val MODEL_ID = "Gemma 3 1B (4-bit, LiteRT)"
 
-        /** 2–4 explanatory sentences; 160 tokens keeps latency reasonable. */
-        private const val MAX_TOKENS = 160
+        /**
+         * Total sequence length (prompt + generated). Must comfortably hold the
+         * longest verbatim statute chunk plus the explanation. 1024 is safe for
+         * Gemma 3 1B and our ~1800-char chunk cap.
+         */
+        private const val MAX_SEQUENCE_TOKENS = 1024
         private const val TOP_K = 40
 
         /** Past this we show verbatim text instead (explanation is longer now). */

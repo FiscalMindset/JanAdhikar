@@ -27,29 +27,32 @@ class KnowledgeBaseProvisioner(private val context: Context) {
             return target
         }
 
-        // First run, APK upgrade (new artifact), or corrupted copy: re-copy.
-        val staging = File(dir, "$DB_FILE_NAME.staging")
-        context.assets.open(DB_ASSET).use { input ->
-            staging.outputStream().use { output -> input.copyTo(output) }
-        }
-        check(sha256(staging) == expectedSha) {
-            staging.delete()
-            "Knowledge base failed integrity check after copy — refusing to serve legal data " +
-                "from a corrupt artifact."
-        }
-        // Clear any stale target (older builds marked it read-only, which can
-        // block an atomic rename). renameTo is best-effort; fall back to a copy
-        // so provisioning is robust across upgrades and re-installs.
-        target.setWritable(true)
-        target.delete()
-        if (!staging.renameTo(target)) {
-            staging.inputStream().use { input ->
-                target.outputStream().use { output -> input.copyTo(output) }
+        // First run, APK upgrade (new artifact), or corrupted copy: copy the
+        // asset straight to the target. No staging/rename — those were flaky on
+        // some filesystems. Retried once because the app-private dir can lag
+        // right after a fresh install.
+        var lastError: Exception? = null
+        repeat(2) { attempt ->
+            try {
+                dir.mkdirs()
+                clearSidecars(target)
+                target.delete()
+                context.assets.open(DB_ASSET).use { input ->
+                    target.outputStream().use { output -> input.copyTo(output); output.flush() }
+                }
+                check(target.exists() && sha256(target) == expectedSha) {
+                    "integrity check failed after copy"
+                }
+                clearSidecars(target)
+                return target
+            } catch (e: Exception) {
+                lastError = e
+                Thread.sleep(150L * (attempt + 1))
             }
-            staging.delete()
         }
-        check(sha256(target) == expectedSha) { "Knowledge base corrupt after provisioning." }
-        clearSidecars(target)
+        throw IllegalStateException(
+            "Could not provision knowledge base: ${lastError?.message}", lastError,
+        )
         // NOTE: no filesystem read-only bit — Android's SQLite helper needs to
         // open the file r/w even for reads. Immutability is enforced instead by
         // PRAGMA query_only (Room), SQLITE_OPEN_READONLY (native), and the

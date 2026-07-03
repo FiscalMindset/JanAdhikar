@@ -25,6 +25,12 @@
     <string name="example_1">What are my fundamental rights?</string>
     <string name="example_2">Police slapped me without any reason</string>
     <string name="example_3">What is the punishment for theft?</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="models_on_device">Models on device</string>
+    <string name="usage_log">Usage log</string>
+    <string name="no_usage_yet">No questions asked yet.</string>
+    <string name="new_chat">New chat</string>
 
     <!-- Active -->
     <string name="active_listening">Listening…</string>
