@@ -7,6 +7,8 @@ import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,7 +25,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -31,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -50,9 +56,6 @@ private class PdfDoc(file: File) : Closeable {
     val pageCount: Int get() = renderer.pageCount
 
     @Synchronized
-    fun aspect(index: Int): Float = renderer.openPage(index).use { it.height.toFloat() / it.width }
-
-    @Synchronized
     fun render(index: Int, widthPx: Int): Bitmap = renderer.openPage(index).use { page ->
         val h = (widthPx * page.height.toFloat() / page.width).toInt().coerceAtLeast(1)
         val bmp = Bitmap.createBitmap(widthPx, h, Bitmap.Config.ARGB_8888)
@@ -68,8 +71,9 @@ private class PdfDoc(file: File) : Closeable {
 
 /**
  * In-app viewer for the official bare-act PDFs (bundled in assets, so it works
- * 100% offline). Opens scrolled straight to [targetPage] — the exact page the
- * cited provision lives on, guaranteed, without relying on an external browser.
+ * 100% offline). Lands on [targetPage] reliably (scrollToItem after load, not a
+ * best-effort initial index), supports pinch-zoom + pan, and shows the live
+ * page number — no external browser, guaranteed page.
  */
 @Composable
 fun PdfViewerScreen(
@@ -95,7 +99,28 @@ fun PdfViewerScreen(
     }
 
     val startIndex = (targetPage - 1).coerceAtLeast(0)
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
+    val listState = rememberLazyListState()
+    // Land on the cited page once the document is ready — reliable, unlike an
+    // initial index that async page-height changes can throw off.
+    LaunchedEffect(doc) { if (doc != null) listState.scrollToItem(startIndex) }
+
+    val currentPage by remember {
+        derivedStateOf { listState.firstVisibleItemIndex + 1 }
+    }
+
+    // Pinch-zoom + pan state.
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+        scale = (scale * zoomChange).coerceIn(1f, 5f)
+        if (scale > 1f) {
+            offsetX += panChange.x
+            offsetY += panChange.y
+        } else {
+            offsetX = 0f; offsetY = 0f
+        }
+    }
 
     Column(modifier = modifier.fillMaxSize().background(Palette.NearBlack)) {
         Row(
@@ -116,11 +141,21 @@ fun PdfViewerScreen(
                 maxLines = 1,
                 modifier = Modifier.weight(1f),
             )
+            val total = doc?.pageCount ?: 0
             Text(
-                text = "p.$targetPage",
+                text = if (total > 0) "$currentPage / $total" else "p.$targetPage",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Palette.DimGray,
             )
+            if (scale > 1f) {
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    "⤢",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Palette.DirectiveYellow,
+                    modifier = Modifier.clickable { scale = 1f; offsetX = 0f; offsetY = 0f },
+                )
+            }
         }
 
         val d = doc
@@ -131,11 +166,18 @@ fun PdfViewerScreen(
         } else {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale; scaleY = scale
+                        translationX = offsetX; translationY = offsetY
+                    }
+                    .transformable(transformState)
+                    .padding(horizontal = 8.dp),
             ) {
                 items(count = d.pageCount) { index ->
                     Spacer(Modifier.height(8.dp))
-                    PdfPage(d, index)
+                    PdfPage(d, index, highRes = scale > 1f)
                 }
             }
         }
@@ -143,13 +185,14 @@ fun PdfViewerScreen(
 }
 
 @Composable
-private fun PdfPage(doc: PdfDoc, index: Int) {
+private fun PdfPage(doc: PdfDoc, index: Int, highRes: Boolean) {
     val context = LocalContext.current
-    val widthPx = remember { context.resources.displayMetrics.widthPixels - 32 }
+    val screenW = remember { context.resources.displayMetrics.widthPixels - 32 }
+    // Render at 2x when zoomed so text stays crisp; 1x otherwise (lighter).
+    val widthPx = if (highRes) screenW * 2 else screenW
     var bitmap by remember(index) { mutableStateOf<Bitmap?>(null) }
-    val aspect = remember(index) { runCatching { doc.aspect(index) }.getOrDefault(1.4f) }
 
-    androidx.compose.runtime.LaunchedEffect(index) {
+    LaunchedEffect(index, highRes) {
         bitmap = withContext(Dispatchers.IO) { runCatching { doc.render(index, widthPx) }.getOrNull() }
     }
 
@@ -162,8 +205,9 @@ private fun PdfPage(doc: PdfDoc, index: Int) {
             contentScale = ContentScale.FillWidth,
         )
     } else {
+        // A4-ish placeholder so the list has stable heights before render.
         Box(
-            Modifier.fillMaxWidth().aspectRatio(1f / aspect).background(Palette.PaperWhite),
+            Modifier.fillMaxWidth().aspectRatio(1f / 1.414f).background(Palette.PaperWhite),
             contentAlignment = Alignment.Center,
         ) {
             CircularProgressIndicator(color = Palette.DirectiveYellow, strokeWidth = 2.dp)
