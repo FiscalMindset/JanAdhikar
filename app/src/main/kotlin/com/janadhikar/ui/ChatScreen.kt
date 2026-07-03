@@ -85,7 +85,7 @@ fun ChatScreen(
     Column(modifier = modifier.fillMaxSize()) {
         TopBar(onNewChat = onNewChat, onSettings = onSettings, showNewChat = turns.isNotEmpty())
         if (turns.isEmpty()) {
-            EmptyState(engineReady, warmupStage, warmupFailed, modifier = Modifier.weight(1f))
+            EmptyState(engineReady, warmupStage, warmupFailed, onExample = onAsk, modifier = Modifier.weight(1f))
         } else {
             LazyColumn(
                 state = listState,
@@ -135,6 +135,7 @@ private fun EmptyState(
     engineReady: Boolean,
     warmupStage: String,
     warmupFailed: Boolean,
+    onExample: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -171,11 +172,18 @@ private fun EmptyState(
             )
         } else {
             listOf(R.string.example_1, R.string.example_2, R.string.example_3).forEach { ex ->
+                val text = stringResource(ex)
                 Text(
-                    text = "•  " + stringResource(ex),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Palette.DimGray,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                    text = "💬  $text",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Palette.DirectiveYellow,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .background(Palette.NearBlack, RoundedCornerShape(10.dp))
+                        .clickable { onExample(text) }
+                        .padding(horizontal = 12.dp, vertical = 12.dp)
+                        .testTag("example_$ex"),
                 )
             }
         }

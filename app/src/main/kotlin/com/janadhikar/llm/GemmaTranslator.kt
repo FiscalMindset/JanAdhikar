@@ -137,8 +137,13 @@ class GemmaTranslator(
         private const val MAX_SEQUENCE_TOKENS = 1024
         private const val TOP_K = 40
 
-        /** Past this we show verbatim text instead (explanation is longer now). */
-        private const val INFERENCE_TIMEOUT_MS = 20_000L
+        /**
+         * Past this we give up and show verbatim text. Generous because the
+         * answer STREAMS — the user watches tokens the whole time, so a long
+         * budget is not a frozen wait, and it lets Gemma finish rather than
+         * discarding a nearly-complete streamed answer.
+         */
+        private const val INFERENCE_TIMEOUT_MS = 45_000L
 
         /** Cold-start warm-up can be slow; bound it generously. */
         private const val WARMUP_TIMEOUT_MS = 40_000L
