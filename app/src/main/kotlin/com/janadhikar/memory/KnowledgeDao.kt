@@ -15,6 +15,9 @@ import com.janadhikar.memory.model.StatuteChunkEntity
  * CONTRIBUTING.md Rule 4 and will fail review. The connection additionally
  * runs under `PRAGMA query_only = 1` (see KnowledgeDatabase).
  */
+/** One row of the corpus self-description (statute + unit + provision count). */
+data class ProvisionCount(val statuteName: String, val unit: String, val count: Int)
+
 @Dao
 interface KnowledgeDao {
 
@@ -39,6 +42,14 @@ interface KnowledgeDao {
             "GROUP BY statute_name ORDER BY id",
     )
     suspend fun chunksByNumber(number: String, unit: String): List<StatuteChunkEntity>
+
+    /** Per-statute count of distinct provisions — for "how many articles" etc. */
+    @Query(
+        "SELECT statute_name AS statuteName, unit AS unit, " +
+            "COUNT(DISTINCT section_number) AS count FROM statute_chunks " +
+            "GROUP BY statute_name, unit ORDER BY statute_name",
+    )
+    suspend fun provisionCounts(): List<ProvisionCount>
 
     // ── Graph: Cognee-derived nodes and edges ───────────────────────────────
 

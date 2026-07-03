@@ -5,6 +5,7 @@ import com.janadhikar.input.NormalizedQuery
 import com.janadhikar.input.QueryNormalizer
 import com.janadhikar.llm.Directive
 import com.janadhikar.llm.PromptContract
+import com.janadhikar.memory.MetaQuestion
 import com.janadhikar.memory.model.RetrievalResult
 import com.janadhikar.memory.model.VerifiedCitation
 import kotlinx.coroutines.CancellationException
@@ -40,6 +41,8 @@ class ChatEngine(
     /** Re-explain a provision in a distinctly different style (follow-ups). */
     private val reexplain: suspend (VerifiedCitation, AppLanguage, PromptContract.Style, (String) -> Unit) -> Directive =
         { c, l, _, d -> translate(c, l, d) },
+    /** A self-describing summary of the knowledge base ("how many articles"). */
+    private val corpusStats: suspend () -> String? = { null },
     private val clock: () -> Long,
     private val preferredLanguage: () -> AppLanguage? = { null },
     private val store: ConversationStore = NoopConversationStore,
@@ -92,6 +95,24 @@ class ChatEngine(
             ?.answer as? Answer.Grounded
         if (FollowUp.isFollowUp(rawQuery) && lastGrounded != null && lastGrounded.citations.isNotEmpty()) {
             answerFollowUp(id, rawQuery.trim(), lastGrounded)
+            return
+        }
+
+        // ── Meta-question about the corpus itself — answer from live DB counts. ─
+        if (MetaQuestion.isMeta(rawQuery)) {
+            appendTurn(Turn(id, rawQuery.trim(), Answer.Thinking))
+            scope.launch {
+                val startedAt = clock()
+                val stats = runCatching { corpusStats() }.getOrNull()
+                val answer = if (stats.isNullOrBlank()) Answer.NoStatute else Answer.Grounded(
+                    explanation = Directive(stats, AppLanguage.ENGLISH, isVerbatimFallback = false,
+                        modelId = "Janadhikar (database)"),
+                    citations = emptyList(), confidence = 1f, redirectedFromSuperseded = false, streaming = false,
+                )
+                updateTurn(id) { it.copy(answer = answer) }
+                logUsage(rawQuery.trim(), answer, clock() - startedAt)
+                store.save(_conversation.value)
+            }
             return
         }
 

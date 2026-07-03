@@ -49,6 +49,10 @@ class GemmaTranslator(
 
     private val genMutex = Mutex()
 
+    /** Which model actually loaded (1B or the bigger 4B), for the metadata. */
+    val modelLabel: String = modelIdForFile(modelFile.name)
+    private val meaningLabel: String = "$modelLabel — plain meaning"
+
     private val llm: LlmInference = LlmInference.createFromOptions(
         context,
         LlmInference.LlmInferenceOptions.builder()
@@ -107,7 +111,7 @@ class GemmaTranslator(
                 text = verdict.text,
                 language = output,
                 isVerbatimFallback = false,
-                modelId = MODEL_ID,
+                modelId = modelLabel,
                 generationMillis = elapsed,
                 approxTokens = verdict.text.length / 4,
             )
@@ -140,7 +144,7 @@ class GemmaTranslator(
             }
         }
         val text = raw?.trim().orEmpty().ifBlank { "Sorry, I could not explain that word." }
-        return Directive(text, output, isVerbatimFallback = false, modelId = MEANING_MODEL_ID)
+        return Directive(text, output, isVerbatimFallback = false, modelId = meaningLabel)
     }
 
     /**
@@ -161,8 +165,14 @@ class GemmaTranslator(
 
     companion object {
         const val MODEL_ASSET = "models/gemma3-1b-it-int4.task"
+        const val MODEL_ASSET_4B = "models/gemma3-4b-it-int4.task"
         const val MODEL_ID = "Gemma 3 1B (4-bit, LiteRT)"
-        const val MEANING_MODEL_ID = "Gemma 3 1B — plain meaning"
+
+        /** Human label for whichever .task file loaded. */
+        fun modelIdForFile(name: String): String = when {
+            name.contains("4b", ignoreCase = true) -> "Gemma 3 4B (int4, LiteRT)"
+            else -> "Gemma 3 1B (4-bit, LiteRT)"
+        }
 
         /**
          * Total sequence length (prompt + generated). Must comfortably hold the

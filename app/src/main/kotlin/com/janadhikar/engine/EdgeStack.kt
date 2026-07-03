@@ -130,7 +130,7 @@ class EdgeStack private constructor(
             // directives fall back to verbatim statute text — always safe.
             val gemmaDeferred: Deferred<GemmaTranslator?> = scope.async {
                 runCatching {
-                    GemmaTranslator(context, provisionAsset(context, GemmaTranslator.MODEL_ASSET))
+                    GemmaTranslator(context, provisionGemma(context))
                         .also { it.warmUp() } // build the weight cache before first use
                 }.getOrNull()
             }
@@ -194,6 +194,7 @@ class EdgeStack private constructor(
                         language = language, isVerbatimFallback = true,
                     )
                 },
+                corpusStats = { CorpusSummary.build(db.dao().provisionCounts()) },
                 clock = System::currentTimeMillis,
                 store = FileConversationStore(File(context.filesDir, "conversation.json")),
                 archive = FileSessionArchive(File(context.filesDir, "sessions.json")),
@@ -206,6 +207,18 @@ class EdgeStack private constructor(
                 lazyCloseables = listOf(whisperDeferred, gemmaDeferred),
                 scope = scope,
             )
+        }
+
+        /**
+         * Prefer the bigger, more accurate Gemma 3 4B if the user pushed it
+         * (much better answers, but slower); otherwise the default 1B.
+         */
+        private fun provisionGemma(context: Context): File {
+            context.getExternalFilesDir("models")?.let { ext ->
+                val fourB = File(ext, "gemma3-4b-it-int4.task")
+                if (fourB.exists() && fourB.length() > 0) return fourB
+            }
+            return provisionAsset(context, GemmaTranslator.MODEL_ASSET)
         }
 
         /** Copies a model out of assets once; models are immutable per APK. */

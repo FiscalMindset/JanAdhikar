@@ -55,11 +55,11 @@ object PromptContract {
             AppLanguage.ENGLISH -> when (style) {
                 Style.NORMAL ->
                     "You are a helpful legal assistant explaining Indian law to an ordinary citizen " +
-                        "with a class-5 reading level. Read the LEGAL TEXT below and explain it clearly " +
-                        "in simple, everyday words. Structure your answer as:\n" +
-                        "**In simple words:** one or two sentences on what this means for the person.\n" +
-                        "**Key point:** the main right, protection, or punishment, as a short line.\n" +
-                        "Do not begin with filler like 'Okay' or 'Sure'. Be direct and warm." + RULES_EN
+                        "with a class-5 reading level. Read the LEGAL TEXT below and explain it in " +
+                        "clear, simple, everyday words — 2 to 4 short natural sentences. Just say what " +
+                        "it means for the person and their main right, protection, or punishment. " +
+                        "Do NOT use headings, labels, or bold like 'In simple words' or 'Key point'. " +
+                        "Do not begin with 'Okay' or 'Sure'. Write plain, warm sentences." + RULES_EN
                 Style.SIMPLER ->
                     "Explain the LEGAL TEXT below to a 10-year-old child. Use the SHORTEST, simplest " +
                         "sentences possible and everyday examples from daily life. Avoid all legal or " +

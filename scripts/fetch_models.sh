@@ -39,6 +39,20 @@ else
     echo "✓ Gemma model already present"
 fi
 
+# Optional: the bigger, more accurate Gemma 3 4B (int4, ~3 GB). If present the
+# app prefers it automatically (slower — expect ~60-90s/answer on a phone).
+# Enable with GEMMA_4B=1 ./scripts/fetch_models.sh
+GEMMA4B_FILE="$MODELS_DIR/gemma3-4b-it-int4.task"
+if [[ "${GEMMA_4B:-0}" == "1" && ! -f "$GEMMA4B_FILE" ]]; then
+    if [[ -n "${HF_TOKEN:-}" ]]; then
+        echo "→ Downloading Gemma 3 4B int4 (.task, ~3 GB)…"
+        curl -fL --progress-bar -H "Authorization: Bearer $HF_TOKEN" -o "$GEMMA4B_FILE" \
+            "https://huggingface.co/litert-community/Gemma3-4B-IT/resolve/main/gemma3-4b-it-int4.task"
+    else
+        echo "✗ Gemma 4B: set HF_TOKEN (accept license at litert-community/Gemma3-4B-IT). Skipping."
+    fi
+fi
+
 # ── 3. Multilingual sentence embedder (384-dim .tflite) ────────────────────
 # Must be the SAME model family the knowledge pipeline uses (COGNEE.md §5).
 # Convert paraphrase-multilingual-MiniLM-L12-v2 to TFLite via

@@ -7,6 +7,7 @@ import com.janadhikar.memory.model.KbMetaEntity
 import com.janadhikar.memory.model.Relations
 import com.janadhikar.memory.model.RetrievalResult
 import com.janadhikar.memory.model.StatuteChunkEntity
+import com.janadhikar.memory.ProvisionCount
 import com.janadhikar.memory.vec.SqliteVecBridge
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -172,6 +173,7 @@ class HybridRetrieverTest {
             chunks.firstOrNull { it.statuteName.contains(statuteContains) && it.sectionNumber == number }
         override suspend fun chunksByNumber(number: String, unit: String) =
             chunks.filter { it.sectionNumber == number && it.unit == unit }.distinctBy { it.statuteName }
+        override suspend fun provisionCounts() = emptyList<ProvisionCount>()
         override suspend fun nodeById(id: Long): GraphNodeEntity? = null
         override suspend fun edgesFrom(nodeId: Long, relation: String) =
             edges.filter { it.srcNodeId == nodeId && it.relation == relation }.sortedByDescending { it.weight }
