@@ -63,6 +63,7 @@ class MainActivity : ComponentActivity() {
             JanadhikarRoot(
                 edgeStackFlow = app.edgeStackFlow,
                 warmupError = app.warmupError,
+                warmupStage = app.warmupStage,
                 onVoiceRequested = ::requestVoice,
             )
         }

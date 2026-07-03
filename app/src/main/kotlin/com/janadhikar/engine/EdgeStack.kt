@@ -71,10 +71,15 @@ class EdgeStack private constructor(
 
         private const val WHISPER_MODEL_ASSET = "models/ggml-small-q5_1.bin"
 
-        suspend fun create(context: Context): EdgeStack = withContext(Dispatchers.IO) {
+        /** Warm-up progress reported to the UI so the load is never a vague light. */
+        suspend fun create(
+            context: Context,
+            onProgress: (String) -> Unit = {},
+        ): EdgeStack = withContext(Dispatchers.IO) {
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
             // ── Memory: relational + graph (Room) and vector (JNI), same file ──
+            onProgress("Opening knowledge base (5 laws)…")
             val dbFile = KnowledgeBaseProvisioner(context).provision()
             val db = KnowledgeDatabase.open(context, dbFile)
             val vec = SqliteVecBridge.open(dbFile)
@@ -85,6 +90,7 @@ class EdgeStack private constructor(
             )
 
             // ── Query embedder: ON the text critical path, loaded eagerly ──
+            onProgress("Loading search model…")
             val tokenizer = context.assets.open(QueryEmbedder.VOCAB_ASSET).bufferedReader().useLines {
                 com.janadhikar.memory.SentencePieceTokenizer(
                     com.janadhikar.memory.SentencePieceTokenizer.loadVocab(it),
@@ -94,6 +100,7 @@ class EdgeStack private constructor(
                 modelFile = provisionAsset(context, QueryEmbedder.MODEL_ASSET),
                 tokenizer = tokenizer,
             )
+            onProgress("Ready — voice & AI loading in background…")
 
             // ── Voice model + LLM: OFF the critical path. Start loading now in
             //    the background; the engine awaits them only when actually used.
@@ -190,7 +197,7 @@ class EdgeStack private constructor(
             val target = File(dir, name)
             val assetSize = runCatching { context.assets.openFd(assetPath).use { it.length } }.getOrNull()
                 ?: throw IllegalStateException(
-                    "Model '$name' is not in the APK and was not pushed to external storage.",
+                    "Model '$name' not found on device. Run:  ./scripts/push_models.sh",
                 )
             if (target.length() != assetSize) {
                 context.assets.open(assetPath).use { input ->

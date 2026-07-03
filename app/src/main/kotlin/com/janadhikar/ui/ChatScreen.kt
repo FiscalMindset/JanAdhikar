@@ -70,6 +70,8 @@ fun ChatScreen(
     onAsk: (String) -> Unit,
     onMic: () -> Unit,
     modifier: Modifier = Modifier,
+    warmupStage: String = "",
+    warmupFailed: Boolean = false,
 ) {
     val listState = rememberLazyListState()
     LaunchedEffect(turns.size) {
@@ -78,7 +80,7 @@ fun ChatScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
         if (turns.isEmpty()) {
-            EmptyState(engineReady, modifier = Modifier.weight(1f))
+            EmptyState(engineReady, warmupStage, warmupFailed, modifier = Modifier.weight(1f))
         } else {
             LazyColumn(
                 state = listState,
@@ -94,7 +96,12 @@ fun ChatScreen(
 }
 
 @Composable
-private fun EmptyState(engineReady: Boolean, modifier: Modifier = Modifier) {
+private fun EmptyState(
+    engineReady: Boolean,
+    warmupStage: String,
+    warmupFailed: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier.fillMaxWidth().padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -112,22 +119,30 @@ private fun EmptyState(engineReady: Boolean, modifier: Modifier = Modifier) {
             color = Palette.DimGray,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
-        Spacer(Modifier.size(20.dp))
-        listOf(
-            R.string.example_1, R.string.example_2, R.string.example_3,
-        ).forEach { ex ->
-            Text(
-                text = "•  " + stringResource(ex),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Palette.DimGray,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-            )
-        }
+        Spacer(Modifier.size(24.dp))
         if (!engineReady) {
-            Spacer(Modifier.size(20.dp))
-            CircularProgressIndicator(color = Palette.DirectiveYellow)
-            Spacer(Modifier.size(8.dp))
-            Text(stringResource(R.string.warming_up), style = MaterialTheme.typography.bodyMedium, color = Palette.DimGray)
+            // Explicit warm-up status instead of a vague spinner: shows the
+            // current stage, or a clear, actionable error if a model is missing.
+            if (!warmupFailed) {
+                CircularProgressIndicator(color = Palette.DirectiveYellow)
+                Spacer(Modifier.size(12.dp))
+            }
+            Text(
+                text = warmupStage.ifBlank { stringResource(R.string.warming_up) },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (warmupFailed) Palette.DangerRed else Palette.DimGray,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.testTag("warmup_status"),
+            )
+        } else {
+            listOf(R.string.example_1, R.string.example_2, R.string.example_3).forEach { ex ->
+                Text(
+                    text = "•  " + stringResource(ex),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Palette.DimGray,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                )
+            }
         }
     }
 }

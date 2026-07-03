@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 fun JanadhikarRoot(
     edgeStackFlow: StateFlow<EdgeStack?>,
     warmupError: StateFlow<String?>,
+    warmupStage: StateFlow<String>,
     onVoiceRequested: () -> Unit,
 ) {
     JanadhikarTheme {
@@ -31,11 +32,15 @@ fun JanadhikarRoot(
                 val stack = edgeStack
 
                 if (stack == null) {
+                    val stage by warmupStage.collectAsState()
+                    val error by warmupError.collectAsState()
                     ChatScreen(
                         turns = emptyList(),
                         engineReady = false,
                         onAsk = {},
                         onMic = {},
+                        warmupStage = error ?: stage,
+                        warmupFailed = error != null,
                     )
                     return@Box
                 }
