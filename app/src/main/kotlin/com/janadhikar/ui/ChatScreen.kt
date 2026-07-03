@@ -283,8 +283,9 @@ private fun GroundedAnswer(a: Answer.Grounded, onOpenPdf: (String, Int) -> Unit 
             Text("↻ " + stringResource(R.string.superseded_redirect), style = MaterialTheme.typography.bodyMedium, color = Palette.TickerGreen)
         }
         // Citations come AFTER the answer, and only once it is complete — the
-        // "verified record" should support the answer, not precede it.
-        if (!a.streaming) {
+        // "verified record" should support the answer, not precede it. A
+        // plain-meaning answer (word lookup) has no citations — skip the block.
+        if (!a.streaming && a.citations.isNotEmpty()) {
             Spacer(Modifier.size(12.dp))
             Text(
                 text = stringResource(R.string.based_on).uppercase(),

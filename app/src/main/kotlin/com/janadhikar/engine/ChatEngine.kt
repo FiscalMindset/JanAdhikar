@@ -33,6 +33,9 @@ class ChatEngine(
     private val transcriber: Transcriber,
     private val retrieve: suspend (NormalizedQuery) -> RetrievalResult,
     private val translate: suspend (VerifiedCitation, AppLanguage, (String) -> Unit) -> Directive,
+    private val define: suspend (String, AppLanguage, (String) -> Unit) -> Directive = { _, l, _ ->
+        Directive("", l, false)
+    },
     private val clock: () -> Long,
     private val preferredLanguage: () -> AppLanguage? = { null },
     private val store: ConversationStore = NoopConversationStore,
@@ -77,8 +80,18 @@ class ChatEngine(
     // ── Ask a question (typed, or a finished transcript) ─────────────────────
 
     fun ask(rawQuery: String) {
-        val query = QueryNormalizer.normalize(rawQuery)
         val id = nextId++
+
+        // ── Follow-up ("explain this in simple words", "what does that mean")
+        //    refers to the LAST answer — re-explain it, don't search again. ────
+        val lastGrounded = _conversation.value.lastOrNull { it.answer is Answer.Grounded }
+            ?.answer as? Answer.Grounded
+        if (FollowUp.isFollowUp(rawQuery) && lastGrounded != null && lastGrounded.citations.isNotEmpty()) {
+            answerFollowUp(id, rawQuery.trim(), lastGrounded)
+            return
+        }
+
+        val query = QueryNormalizer.normalize(rawQuery)
         if (query == null) {
             // Nothing searchable → a refusal turn using the raw text as the label.
             appendTurn(Turn(id, rawQuery.trim(), Answer.NoStatute))
@@ -130,6 +143,85 @@ class ChatEngine(
             updateTurn(id) { it.copy(answer = answer) }
             logUsage(query.text, answer, clock() - startedAt)
             store.save(_conversation.value) // persist once the answer is final
+        }
+    }
+
+    /**
+     * Explain the plain meaning of a word/phrase the user SELECTED in an answer
+     * (the custom "Meaning" toolbar). A dictionary helper — shown as its own
+     * turn with no citations, clearly a plain-language definition.
+     */
+    fun explainSelection(phrase: String) {
+        val clean = phrase.trim()
+        if (clean.length < 2) return
+        val id = nextId++
+        val label = "Meaning of “${clean.take(60)}”"
+        appendTurn(Turn(id, label, Answer.Thinking))
+        scope.launch {
+            val startedAt = clock()
+            val language = preferredLanguage()
+                ?: (_conversation.value.lastOrNull { it.answer is Answer.Grounded }?.answer as? Answer.Grounded)
+                    ?.explanation?.language ?: AppLanguage.ENGLISH
+            fun meaning(directive: Directive, streaming: Boolean) = Answer.Grounded(
+                explanation = directive, citations = emptyList(), confidence = 1f,
+                redirectedFromSuperseded = false, streaming = streaming,
+            )
+            val answer = try {
+                val partial = StringBuilder()
+                updateTurn(id) { it.copy(answer = meaning(Directive("", language, false), true)) }
+                val directive = define(clean, language) { delta ->
+                    partial.append(delta)
+                    updateTurn(id) { it.copy(answer = meaning(Directive(partial.toString(), language, false), true)) }
+                }
+                meaning(directive, streaming = false)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Answer.NoStatute
+            }
+            updateTurn(id) { it.copy(answer = answer) }
+            store.save(_conversation.value)
+        }
+    }
+
+    /**
+     * Re-explain the previous provision in response to a follow-up. Reuses the
+     * same verified citations (grounding is preserved), and streams a fresh
+     * plain-language explanation from the LLM.
+     */
+    private fun answerFollowUp(id: Long, rawQuery: String, previous: Answer.Grounded) {
+        appendTurn(Turn(id, rawQuery, Answer.Thinking))
+        scope.launch {
+            val startedAt = clock()
+            val language = preferredLanguage() ?: previous.explanation.language
+            val primary = previous.citations.first()
+            fun grounded(directive: Directive, streaming: Boolean) = Answer.Grounded(
+                explanation = directive,
+                citations = previous.citations,
+                confidence = previous.confidence,
+                redirectedFromSuperseded = false,
+                streaming = streaming,
+            )
+            val answer = try {
+                val partial = StringBuilder()
+                updateTurn(id) { it.copy(answer = grounded(Directive("", language, false), true)) }
+                val explanation = translate(primary, language) { delta ->
+                    partial.append(delta)
+                    updateTurn(id) {
+                        it.copy(answer = grounded(Directive(partial.toString(), language, false), true))
+                    }
+                }
+                grounded(explanation, streaming = false)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Fall back to the exact statute text — never refuse a follow-up.
+                val verbatim = if (language == AppLanguage.HINDI) primary.verbatimTextHi else primary.verbatimTextEn
+                grounded(Directive(verbatim, language, isVerbatimFallback = true), streaming = false)
+            }
+            updateTurn(id) { it.copy(answer = answer) }
+            logUsage(rawQuery, answer, clock() - startedAt)
+            store.save(_conversation.value)
         }
     }
 

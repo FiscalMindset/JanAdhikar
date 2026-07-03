@@ -110,6 +110,33 @@ class GemmaTranslator(
     }
 
     /**
+     * Plain-language meaning of a word/phrase the user selected (e.g. "criminal
+     * force", "hefty"). This is a dictionary helper — a general definition, not
+     * a statute — so it is clearly separate from grounded legal answers.
+     */
+    suspend fun define(phrase: String, output: AppLanguage, onDelta: (String) -> Unit): Directive {
+        val lang = if (output == AppLanguage.HINDI) "Hindi" else "simple English"
+        val clean = phrase.trim().take(120).replace("\"", "")
+        val prompt = "<start_of_turn>user\nExplain what \"$clean\" means in $lang, in one or two " +
+            "short sentences a class-5 student would understand. If it is a legal or official term, " +
+            "give its everyday meaning. Do not add extra facts.<end_of_turn>\n<start_of_turn>model\n"
+        val full = StringBuilder()
+        val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) {
+            genMutex.withLock {
+                suspendCancellableCoroutine<String> { cont ->
+                    llm.generateResponseAsync(prompt) { partial, done ->
+                        full.append(partial)
+                        onDelta(partial)
+                        if (done && cont.isActive) cont.resume(full.toString()) {}
+                    }
+                }
+            }
+        }
+        val text = raw?.trim().orEmpty().ifBlank { "Sorry, I could not explain that word." }
+        return Directive(text, output, isVerbatimFallback = false, modelId = MEANING_MODEL_ID)
+    }
+
+    /**
      * Runs one tiny inference to build the LiteRT/XNNPACK weight cache up front,
      * off the background load path — so the user's FIRST real question does not
      * pay the cold-start cost (which is tens of seconds on a phone).
@@ -128,6 +155,7 @@ class GemmaTranslator(
     companion object {
         const val MODEL_ASSET = "models/gemma3-1b-it-int4.task"
         const val MODEL_ID = "Gemma 3 1B (4-bit, LiteRT)"
+        const val MEANING_MODEL_ID = "Gemma 3 1B — plain meaning"
 
         /**
          * Total sequence length (prompt + generated). Must comfortably hold the

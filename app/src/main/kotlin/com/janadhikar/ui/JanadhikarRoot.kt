@@ -89,18 +89,20 @@ fun JanadhikarRoot(
                     return@Box
                 }
 
-                ChatScreen(
-                    turns = turns,
-                    engineReady = true,
-                    onAsk = stack.engine::ask,
-                    onMic = onVoiceRequested,
-                    onSettings = { showSettings = true },
-                    onNewChat = stack.engine::clear,
-                    onHistory = { showHistory = true },
-                    onOpenPdf = { statute, page ->
-                        pdfAssetFor(statute)?.let { pdfView = PdfTarget(it, page, statute) }
-                    },
-                )
+                ProvideMeaningToolbar(onExplain = stack.engine::explainSelection) {
+                    ChatScreen(
+                        turns = turns,
+                        engineReady = true,
+                        onAsk = stack.engine::ask,
+                        onMic = onVoiceRequested,
+                        onSettings = { showSettings = true },
+                        onNewChat = stack.engine::clear,
+                        onHistory = { showHistory = true },
+                        onOpenPdf = { statute, page ->
+                            pdfAssetFor(statute)?.let { pdfView = PdfTarget(it, page, statute) }
+                        },
+                    )
+                }
 
                 when (val c = capture) {
                     is CaptureState.Recording -> RecordingOverlay(
