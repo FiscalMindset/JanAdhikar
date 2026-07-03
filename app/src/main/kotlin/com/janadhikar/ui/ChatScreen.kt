@@ -76,6 +76,7 @@ fun ChatScreen(
     warmupFailed: Boolean = false,
     onSettings: () -> Unit = {},
     onNewChat: () -> Unit = {},
+    onOpenPdf: (statuteName: String, page: Int) -> Unit = { _, _ -> },
 ) {
     val listState = rememberLazyListState()
     LaunchedEffect(turns.size) {
@@ -93,7 +94,7 @@ fun ChatScreen(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                items(turns, key = { it.id }) { turn -> TurnItem(turn) }
+                items(turns, key = { it.id }) { turn -> TurnItem(turn, onOpenPdf) }
             }
         }
         InputBar(engineReady = engineReady, onAsk = onAsk, onMic = onMic)
@@ -191,7 +192,7 @@ private fun EmptyState(
 }
 
 @Composable
-private fun TurnItem(turn: Turn) {
+private fun TurnItem(turn: Turn, onOpenPdf: (String, Int) -> Unit = { _, _ -> }) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // ── user question (right) ──
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -217,13 +218,13 @@ private fun TurnItem(turn: Turn) {
                     modifier = Modifier.testTag("refusal_text"),
                 )
             }
-            is Answer.Grounded -> GroundedAnswer(a)
+            is Answer.Grounded -> GroundedAnswer(a, onOpenPdf)
         }
     }
 }
 
 @Composable
-private fun GroundedAnswer(a: Answer.Grounded) {
+private fun GroundedAnswer(a: Answer.Grounded, onOpenPdf: (String, Int) -> Unit = { _, _ -> }) {
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
     val copiedMsg = stringResource(R.string.copied)
@@ -279,7 +280,7 @@ private fun GroundedAnswer(a: Answer.Grounded) {
             )
             Spacer(Modifier.size(6.dp))
             a.citations.forEach { citation ->
-                CitationCard(citation = citation, language = a.explanation.language)
+                CitationCard(citation = citation, language = a.explanation.language, onOpenPdf = onOpenPdf)
                 Spacer(Modifier.size(8.dp))
             }
             MetaBlock(a)

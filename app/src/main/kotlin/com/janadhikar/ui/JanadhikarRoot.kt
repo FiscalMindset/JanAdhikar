@@ -17,6 +17,9 @@ import com.janadhikar.ui.theme.JanadhikarTheme
 import com.janadhikar.ui.theme.Palette
 import kotlinx.coroutines.flow.StateFlow
 
+/** Which bare-act PDF page the in-app viewer should open. */
+private data class PdfTarget(val asset: String, val page: Int, val title: String)
+
 /**
  * Root: the conversational assistant. A scrolling thread of questions and
  * grounded answers, with a recording overlay while the mic is live.
@@ -51,6 +54,7 @@ fun JanadhikarRoot(
                 val turns by stack.engine.conversation.collectAsState()
                 val capture by stack.engine.capture.collectAsState()
                 var showSettings by remember { mutableStateOf(false) }
+                var pdfView by remember { mutableStateOf<PdfTarget?>(null) }
 
                 if (showSettings) {
                     val status by stack.status.collectAsState()
@@ -63,6 +67,16 @@ fun JanadhikarRoot(
                     return@Box
                 }
 
+                pdfView?.let { target ->
+                    PdfViewerScreen(
+                        assetName = target.asset,
+                        targetPage = target.page,
+                        title = target.title,
+                        onBack = { pdfView = null },
+                    )
+                    return@Box
+                }
+
                 ChatScreen(
                     turns = turns,
                     engineReady = true,
@@ -70,6 +84,9 @@ fun JanadhikarRoot(
                     onMic = onVoiceRequested,
                     onSettings = { showSettings = true },
                     onNewChat = stack.engine::clear,
+                    onOpenPdf = { statute, page ->
+                        pdfAssetFor(statute)?.let { pdfView = PdfTarget(it, page, statute) }
+                    },
                 )
 
                 when (val c = capture) {

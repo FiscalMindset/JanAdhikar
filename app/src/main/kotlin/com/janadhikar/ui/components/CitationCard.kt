@@ -50,6 +50,7 @@ fun CitationCard(
     citation: VerifiedCitation,
     language: AppLanguage,
     modifier: Modifier = Modifier,
+    onOpenPdf: (statuteName: String, page: Int) -> Unit = { _, _ -> },
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(
@@ -112,34 +113,18 @@ fun CitationCard(
         ReceiptRow(stringResource(R.string.source_label), citation.sourceDocument, small = true)
         ReceiptRow(stringResource(R.string.compiled_label), citation.compilationDate, small = true)
 
-        // Official-source link: opens the actual Government PDF at THIS
-        // provision's page (#page=N). Official and section-specific — not a
-        // search. The app makes no network call; the browser is the user's own.
-        val context = LocalContext.current
-        if (citation.sourceUrl.isNotBlank()) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "📄 " + stringResource(R.string.open_source) + " (p.${citation.pageNumber})",
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
-                color = Color(0xFF0B57D0),
-                modifier = Modifier
-                    .clickable {
-                        // Standard PDF page anchor. Honoured by compliant inline
-                        // viewers; the page number is also shown on the card as
-                        // a fallback for viewers that ignore the fragment.
-                        runCatching {
-                            context.startActivity(
-                                android.content.Intent(
-                                    android.content.Intent.ACTION_VIEW,
-                                    android.net.Uri.parse("${citation.sourceUrl}#page=${citation.pageNumber}"),
-                                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                        }
-                    }
-                    .padding(vertical = 6.dp)
-                    .testTag("source_link"),
-            )
-        }
+        // Opens the official bare-act PDF INSIDE the app, scrolled straight to
+        // this provision's page — fully offline, no browser, guaranteed page.
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "📄 " + stringResource(R.string.open_source) + " (p.${citation.pageNumber})",
+            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
+            color = Color(0xFF0B57D0),
+            modifier = Modifier
+                .clickable { onOpenPdf(citation.statuteName, citation.pageNumber) }
+                .padding(vertical = 6.dp)
+                .testTag("source_link"),
+        )
     }
 }
 

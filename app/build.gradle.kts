@@ -85,7 +85,7 @@ android {
     androidResources {
         // The knowledge DB and tokenizer vocab must be stored uncompressed so
         // they can be memory-mapped directly from the APK.
-        noCompress += listOf("db", "tsv")
+        noCompress += listOf("db", "tsv", "pdf")
         // The large model weights (embedder .tflite, whisper .bin, Gemma .task)
         // are NOT packaged — a ~900 MB APK is unreliable to transfer. They ship
         // via scripts/push_models.sh (adb push) / on-first-run download and are
