@@ -1,6 +1,6 @@
 # 🏛 Janadhikar — Architecture
 
-**[🏠 README](README.md)** · **📐 Architecture** · **[🤝 Contributing](CONTRIBUTING.md)** · **[📚 Knowledge](knowledge_database.md)** · **[🧠 Cognee](COGNEE.md)**
+**[🏠 README](README.md)** · **📐 Architecture** · **[🤝 Contributing](CONTRIBUTING.md)** · **[📚 Knowledge](KNOWLEDGE.md)** · **[🧠 Cognee](COGNEE.md)**
 
 > An on-device legal assistant for Indian citizens. Ask about your rights in
 > plain words (typed or spoken, English/Hindi/Hinglish) and get a clear,

@@ -1,6 +1,6 @@
 # Janadhikar Knowledge Database
 
-**[🏠 README](README.md)** · **[📐 Architecture](ARCHITECTURE.md)** · **[🤝 Contributing](CONTRIBUTING.md)** · **📚 Knowledge** · **[🧠 Cognee](COGNEE.md)**
+**[🏠 README](README.md)** · **[📐 Architecture](ARCHITECTURE.md)** · **[🤝 Contributing](CONTRIBUTING.md)** · **[📚 Knowledge](KNOWLEDGE.md)** · **[🧠 Cognee](COGNEE.md)**
 
 > **Mission: justice information in every hand.** This file is the single source
 > of truth about *what law the app knows*, *where it came from*, and *how it is

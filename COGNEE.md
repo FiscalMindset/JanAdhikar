@@ -1,6 +1,6 @@
 # COGNEE.md — How Janadhikar Uses Cognee
 
-**[🏠 README](README.md)** · **[📐 Architecture](ARCHITECTURE.md)** · **[🤝 Contributing](CONTRIBUTING.md)** · **[📚 Knowledge](knowledge_database.md)** · **🧠 Cognee**
+**[🏠 README](README.md)** · **[📐 Architecture](ARCHITECTURE.md)** · **[🤝 Contributing](CONTRIBUTING.md)** · **[📚 Knowledge](KNOWLEDGE.md)** · **🧠 Cognee**
 
 > **TL;DR:** Cognee runs **only at build time, on a desktop**. It compiles official
 > legal PDFs into a knowledge graph, which we flatten into plain SQLite tables and
