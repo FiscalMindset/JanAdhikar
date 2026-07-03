@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -215,21 +216,35 @@ private fun TurnItem(turn: Turn) {
 @Composable
 private fun GroundedAnswer(a: Answer.Grounded) {
     val clipboard = LocalClipboardManager.current
-    val copied = stringResource(R.string.copied)
+    val context = LocalContext.current
+    val copiedMsg = stringResource(R.string.copied)
     AnswerBubble {
-        // Plain-language explanation (Gemma), selectable + copyable.
-        SelectionContainer {
-            Text(
-                text = a.explanation.text,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (a.explanation.isVerbatimFallback) Palette.PaperWhite else Palette.DirectiveYellow,
-                modifier = Modifier.testTag("answer_text"),
-            )
+        // Streaming explanation (Gemma), selectable. While streaming, show a
+        // caret; if nothing has streamed yet, show a small "writing" hint.
+        if (a.explanation.text.isBlank() && a.streaming) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(color = Palette.DirectiveYellow, strokeWidth = 2.dp, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.writing), style = MaterialTheme.typography.bodyMedium, color = Palette.DimGray)
+            }
+        } else {
+            SelectionContainer {
+                Text(
+                    text = a.explanation.text + if (a.streaming) " ▋" else "",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (a.explanation.isVerbatimFallback) Palette.PaperWhite else Palette.White,
+                    modifier = Modifier.testTag("answer_text"),
+                )
+            }
         }
-        Spacer(Modifier.size(6.dp))
-        Row {
-            CopyChip(stringResource(R.string.copy)) {
-                clipboard.setText(AnnotatedString(a.explanation.text))
+        if (!a.streaming && a.explanation.text.isNotBlank()) {
+            Spacer(Modifier.size(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CopyChip(stringResource(R.string.copy)) {
+                    clipboard.setText(AnnotatedString(a.explanation.text))
+                    android.widget.Toast.makeText(context, copiedMsg, android.widget.Toast.LENGTH_SHORT).show()
+                }
+                MetaChip(a)
             }
         }
         if (a.redirectedFromSuperseded) {
@@ -242,6 +257,21 @@ private fun GroundedAnswer(a: Answer.Grounded) {
             Spacer(Modifier.size(8.dp))
         }
     }
+}
+
+/** Inline metadata chip: model · time · confidence. */
+@Composable
+private fun MetaChip(a: Answer.Grounded) {
+    val meta = buildString {
+        append(a.explanation.modelId.substringBefore(" (").ifBlank { "verbatim" })
+        if (a.explanation.generationMillis > 0) append(" · ${a.explanation.generationMillis / 1000}s")
+        append(" · ${"%.0f".format(a.confidence * 100)}%")
+    }
+    Text(
+        text = meta,
+        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 11.sp),
+        color = Palette.DimGray,
+    )
 }
 
 @Composable

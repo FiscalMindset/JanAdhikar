@@ -5,6 +5,9 @@ import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.janadhikar.input.AppLanguage
 import com.janadhikar.memory.model.VerifiedCitation
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.Closeable
@@ -44,6 +47,8 @@ class GemmaTranslator(
     modelFile: File,
 ) : Closeable {
 
+    private val genMutex = Mutex()
+
     private val llm: LlmInference = LlmInference.createFromOptions(
         context,
         LlmInference.LlmInferenceOptions.builder()
@@ -58,29 +63,51 @@ class GemmaTranslator(
     )
 
     suspend fun translate(citation: VerifiedCitation, output: AppLanguage): Directive =
-        withContext(Dispatchers.Default) {
-            val verbatim = VerbatimStatuteText.from(citation, output)
-            val prompt = PromptContract.build(verbatim, output)
+        translate(citation, output, onDelta = {})
 
-            val startedAt = System.currentTimeMillis()
-            val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) {
-                llm.generateResponse(prompt)
-            }
-            val elapsed = System.currentTimeMillis() - startedAt
+    /**
+     * Streams the explanation token-by-token via [onDelta] (called on the main
+     * flow of tokens as they arrive), then returns the final [Directive] with
+     * the sanitized full text. If the model leaks a citation the streamed text
+     * is discarded and the verbatim law is returned instead (always safe).
+     */
+    suspend fun translate(
+        citation: VerifiedCitation,
+        output: AppLanguage,
+        onDelta: (String) -> Unit,
+    ): Directive {
+        val verbatim = VerbatimStatuteText.from(citation, output)
+        val prompt = PromptContract.build(verbatim, output)
+        val startedAt = System.currentTimeMillis()
 
-            when (val verdict = raw?.let(OutputSanitizer::inspect)) {
-                is OutputSanitizer.Verdict.Clean -> Directive(
-                    text = verdict.text,
-                    language = output,
-                    isVerbatimFallback = false,
-                    modelId = MODEL_ID,
-                    generationMillis = elapsed,
-                    approxTokens = verdict.text.length / 4,
-                )
-                // Leak, unusable output, or timeout → verbatim DB text. Always safe.
-                else -> Directive(verbatim.value, output, isVerbatimFallback = true)
+        val full = StringBuilder()
+        // generateResponseAsync is single-flight per instance — serialize.
+        val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) {
+            genMutex.withLock {
+                suspendCancellableCoroutine<String> { cont ->
+                    llm.generateResponseAsync(prompt) { partial, done ->
+                        full.append(partial)
+                        onDelta(partial)
+                        if (done && cont.isActive) cont.resume(full.toString()) {}
+                    }
+                }
             }
         }
+        val elapsed = System.currentTimeMillis() - startedAt
+
+        return when (val verdict = raw?.let(OutputSanitizer::inspect)) {
+            is OutputSanitizer.Verdict.Clean -> Directive(
+                text = verdict.text,
+                language = output,
+                isVerbatimFallback = false,
+                modelId = MODEL_ID,
+                generationMillis = elapsed,
+                approxTokens = verdict.text.length / 4,
+            )
+            // Leak, unusable output, or timeout → verbatim DB text. Always safe.
+            else -> Directive(verbatim.value, output, isVerbatimFallback = true)
+        }
+    }
 
     /**
      * Runs one tiny inference to build the LiteRT/XNNPACK weight cache up front,

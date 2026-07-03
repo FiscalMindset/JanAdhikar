@@ -30,6 +30,8 @@ sealed interface Answer {
         val citations: List<VerifiedCitation>,
         val confidence: Float,
         val redirectedFromSuperseded: Boolean,
+        /** True while Gemma is still streaming tokens into [explanation]. */
+        val streaming: Boolean = false,
     ) : Answer
 
     /** The governed refusal (Rule 3) — no verified statute for this question. */

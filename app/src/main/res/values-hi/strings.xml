@@ -19,6 +19,8 @@
     <string name="chat_tagline">अपने अधिकारों और भारतीय कानून के बारे में अपने शब्दों में कुछ भी पूछें — 100% ऑफ़लाइन।</string>
     <string name="ask_anything">अपने अधिकारों के बारे में पूछें…</string>
     <string name="thinking">सोच रहा है…</string>
+    <string name="writing">उत्तर लिखा जा रहा है…</string>
+    <string name="open_source">आधिकारिक स्रोत खोलें</string>
     <string name="copied">कॉपी किया गया</string>
     <string name="copy">कॉपी</string>
     <string name="example_1">मेरे मौलिक अधिकार क्या हैं?</string>

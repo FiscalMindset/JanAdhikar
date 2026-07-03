@@ -20,6 +20,8 @@
     <string name="chat_tagline">Ask anything about your rights and Indian law — in your own words. 100% offline.</string>
     <string name="ask_anything">Ask about your rights…</string>
     <string name="thinking">Thinking…</string>
+    <string name="writing">Writing the answer…</string>
+    <string name="open_source">Open official source</string>
     <string name="copied">Copied</string>
     <string name="copy">Copy</string>
     <string name="example_1">What are my fundamental rights?</string>

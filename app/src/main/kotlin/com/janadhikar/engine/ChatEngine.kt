@@ -32,7 +32,7 @@ class ChatEngine(
     private val audioSource: AudioSource,
     private val transcriber: Transcriber,
     private val retrieve: suspend (NormalizedQuery) -> RetrievalResult,
-    private val translate: suspend (VerifiedCitation, AppLanguage) -> Directive,
+    private val translate: suspend (VerifiedCitation, AppLanguage, (String) -> Unit) -> Directive,
     private val clock: () -> Long,
     private val preferredLanguage: () -> AppLanguage? = { null },
 ) {
@@ -84,13 +84,25 @@ class ChatEngine(
                     is RetrievalResult.NoVerifiedStatute -> Answer.NoStatute
                     is RetrievalResult.Match -> {
                         val language = preferredLanguage() ?: query.language
-                        val explanation = translate(result.primary, language)
-                        Answer.Grounded(
-                            explanation = explanation,
-                            citations = listOf(result.primary) + result.related,
+                        val citations = listOf(result.primary) + result.related
+                        // Show the citations IMMEDIATELY (the section + its text),
+                        // then stream the explanation into the bubble.
+                        val partial = StringBuilder()
+                        fun grounded(directive: Directive, streaming: Boolean) = Answer.Grounded(
+                            explanation = directive,
+                            citations = citations,
                             confidence = result.confidence,
                             redirectedFromSuperseded = result.redirectedFromSuperseded,
+                            streaming = streaming,
                         )
+                        updateTurn(id) { it.copy(answer = grounded(Directive("", language, false), true)) }
+                        val explanation = translate(result.primary, language) { delta ->
+                            partial.append(delta)
+                            updateTurn(id) {
+                                it.copy(answer = grounded(Directive(partial.toString(), language, false), true))
+                            }
+                        }
+                        grounded(explanation, streaming = false)
                     }
                 }
             } catch (e: CancellationException) {

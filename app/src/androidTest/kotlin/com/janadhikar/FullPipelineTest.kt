@@ -80,7 +80,12 @@ class FullPipelineTest {
 
     private suspend fun awaitAnswered(index: Int): Turn = withTimeout(90_000) {
         stack.engine.conversation.first {
-            it.size > index && it[index].answer !is Answer.Thinking
+            if (it.size <= index) return@first false
+            when (val a = it[index].answer) {
+                is Answer.Grounded -> !a.streaming // wait for the final, streamed answer
+                Answer.NoStatute -> true
+                Answer.Thinking -> false
+            }
         }[index]
     }
 

@@ -47,8 +47,15 @@ class HybridRetriever(
         val bestSim = neighbors.firstOrNull()?.let { 1f - it.distance } ?: 0f
         val vectorIds = neighbors.filter { 1f - it.distance >= CONFIDENCE_THRESHOLD }.map { it.chunkId }
 
-        // ── 3. MERGE — keyword first, then above-threshold vector; dedup ─────
+        // ── 3. MERGE — CONSENSUS first ──────────────────────────────────────
+        // A section that BOTH the keyword search and the semantic search
+        // surface is the strongest signal (e.g. "punishment for theft" →
+        // keyword 'theft' AND vector 'punishment for theft' both hit §303
+        // "Punishment for theft", so it beats §307 which only the keyword
+        // matched). Then remaining keyword hits, then remaining vector hits.
+        val consensus = keywordIds.filter { it in vectorIds }
         val orderedIds = LinkedHashSet<Long>().apply {
+            addAll(consensus)
             addAll(keywordIds)
             addAll(vectorIds)
         }.toList()

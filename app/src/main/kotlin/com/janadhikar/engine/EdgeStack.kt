@@ -177,8 +177,8 @@ class EdgeStack private constructor(
                     }
                 },
                 retrieve = { query -> retriever.retrieve(query.text) },
-                translate = { citation, language ->
-                    gemmaDeferred.await()?.translate(citation, language) ?: Directive(
+                translate = { citation, language, onDelta ->
+                    gemmaDeferred.await()?.translate(citation, language, onDelta) ?: Directive(
                         text = VerbatimStatuteText.from(citation, language).value,
                         language = language,
                         isVerbatimFallback = true,

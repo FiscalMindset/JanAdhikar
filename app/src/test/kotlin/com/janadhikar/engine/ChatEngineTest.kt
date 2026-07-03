@@ -7,6 +7,7 @@ import com.janadhikar.llm.Directive
 import com.janadhikar.memory.model.RetrievalResult
 import com.janadhikar.memory.model.VerifiedCitation
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
@@ -37,25 +38,19 @@ class ChatEngineTest {
         audioSource = { MutableSharedFlow() },
         transcriber = { "" },
         retrieve = { retrieval },
-        translate = { _, lang -> Directive("It means you can ask why you are arrested.", lang, false) },
+        translate = { _, lang, _ -> Directive("It means you can ask why you are arrested.", lang, false) },
         clock = { 0L },
     )
 
     @Test
     fun `a question appends a turn that resolves to a grounded answer`() = runTest {
         val engine = engine(backgroundScope)
-        engine.conversation.test {
-            assertThat(awaitItem()).isEmpty()
-            engine.ask("why am I being arrested")
-
-            val pending = awaitItem()
-            assertThat(pending).hasSize(1)
-            assertThat(pending[0].answer).isEqualTo(Answer.Thinking)
-
-            val done = awaitItem()
-            val answer = done[0].answer as Answer.Grounded
-            assertThat(answer.citations.first().sectionNumber).isEqualTo("47")
-        }
+        engine.ask("why am I being arrested")
+        runCurrent()
+        val answer = engine.conversation.value.single().answer as Answer.Grounded
+        assertThat(answer.streaming).isFalse()
+        assertThat(answer.citations.first().sectionNumber).isEqualTo("47")
+        assertThat(answer.explanation.text).contains("ask why")
     }
 
     @Test
@@ -98,15 +93,11 @@ class ChatEngineTest {
             audioSource = { MutableSharedFlow() },
             transcriber = { "" },
             retrieve = { match },
-            translate = { _, lang -> used = lang; Directive("व्याख्या", lang, false) },
+            translate = { _, lang, _ -> used = lang; Directive("व्याख्या", lang, false) },
             clock = { 0L },
         )
-        engine.conversation.test {
-            skipItems(1)
-            engine.ask("पुलिस गिरफ्तारी का कारण नहीं बता रही")
-            skipItems(1)
-            awaitItem()
-        }
+        engine.ask("पुलिस गिरफ्तारी का कारण नहीं बता रही")
+        runCurrent()
         assertThat(used).isEqualTo(AppLanguage.HINDI)
     }
 }

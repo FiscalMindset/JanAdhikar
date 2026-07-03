@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -91,60 +92,53 @@ fun CitationCard(
         citation.clause?.let { ReceiptRow(stringResource(R.string.clause_label), it) }
         ReceiptRow(stringResource(R.string.page_label), citation.pageNumber.toString())
 
-        AnimatedVisibility(visible = expanded) {
-            Column {
-                DashedDivider()
-                val fullText = when (language) {
-                    AppLanguage.ENGLISH -> citation.verbatimTextEn
-                    AppLanguage.HINDI -> citation.verbatimTextHi
-                }
-                Text(
-                    text = fullText,
-                    style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
-                    color = Palette.InkBlack,
-                    modifier = Modifier.testTag("verbatim_text"),
-                )
-                Spacer(Modifier.height(6.dp))
-            }
+        // The actual text of the law — a preview always visible (so the user
+        // sees what's inside the section), expanding to the full text on tap.
+        DashedDivider()
+        val fullText = when (language) {
+            AppLanguage.ENGLISH -> citation.verbatimTextEn
+            AppLanguage.HINDI -> citation.verbatimTextHi
         }
+        val preview = if (fullText.length > 200) fullText.take(200).trimEnd() + "…" else fullText
+        Text(
+            text = if (expanded) fullText else preview,
+            style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp, fontSize = 15.sp),
+            color = Palette.InkBlack,
+            modifier = Modifier.testTag("verbatim_text"),
+        )
+        Spacer(Modifier.height(6.dp))
 
         DashedDivider()
-        // Source is tappable: copies the full citation reference to the
-        // clipboard so a citizen can look it up / share it. (The app makes no
-        // network calls; opening it elsewhere is the user's choice.)
-        val clipboard = LocalClipboardManager.current
-        val copied = stringResource(R.string.source_copied)
+        ReceiptRow(stringResource(R.string.source_label), citation.sourceDocument, small = true)
+        ReceiptRow(stringResource(R.string.compiled_label), citation.compilationDate, small = true)
+
+        // Official source link — opens the India Code page in a browser so the
+        // citizen can verify the exact text themselves. The app itself makes no
+        // network call; launching a URL is the user's own action.
         val context = LocalContext.current
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    val ref = "$statuteName, $unitLabel ${citation.sectionNumber}, p.${citation.pageNumber} " +
-                        "— ${citation.sourceDocument}"
-                    clipboard.setText(AnnotatedString(ref))
-                    Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
-                }
-                .padding(vertical = 3.dp),
-        ) {
+        if (citation.sourceUrl.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
             Text(
-                text = stringResource(R.string.source_label).uppercase() + "  ⧉",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 13.sp,
-                ),
-                color = Palette.InkBlack.copy(alpha = 0.6f),
-                modifier = Modifier.padding(end = 12.dp),
-            )
-            Text(
-                text = citation.sourceDocument,
+                text = "🔗 " + stringResource(R.string.open_source),
                 style = MaterialTheme.typography.bodyLarge.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold, fontSize = 14.sp,
                 ),
-                color = Palette.InkBlack,
+                color = Color(0xFF0B57D0),
+                modifier = Modifier
+                    .clickable {
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(citation.sourceUrl),
+                                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    }
+                    .padding(vertical = 6.dp)
+                    .testTag("source_link"),
             )
         }
-        ReceiptRow(stringResource(R.string.compiled_label), citation.compilationDate, small = true)
     }
 }
 
