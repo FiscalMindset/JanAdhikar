@@ -90,7 +90,7 @@ class LlamaTranslator private constructor(private val llama: LlamaBridge) : Clos
     companion object {
         private const val INFERENCE_TIMEOUT_MS = 90_000L
         private const val WARMUP_TIMEOUT_MS = 40_000L
-        private const val MAX_NEW_TOKENS = 130
+        private const val MAX_NEW_TOKENS = 340
 
         fun open(modelFile: File): LlamaTranslator? =
             LlamaBridge.open(modelFile)?.let { LlamaTranslator(it) }

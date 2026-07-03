@@ -57,11 +57,11 @@ class PromptContractTest {
     }
 
     @Test
-    fun `prompt instructs the model not to cite`() {
+    fun `prompt asks for an accurate, structured explanation`() {
         val en = PromptContract.build(VerbatimStatuteText.from(citation, AppLanguage.ENGLISH), AppLanguage.ENGLISH)
-        val hi = PromptContract.build(VerbatimStatuteText.from(citation, AppLanguage.HINDI), AppLanguage.HINDI)
-        assertThat(en).contains("Do NOT mention or invent any section number")
-        assertThat(hi).contains("कोई धारा संख्या")
+        // Rich answers are now the goal; the prompt still forbids fabricating.
+        assertThat(en).contains("What it means")
+        assertThat(en).contains("do not invent fake case names")
     }
 
     @Test

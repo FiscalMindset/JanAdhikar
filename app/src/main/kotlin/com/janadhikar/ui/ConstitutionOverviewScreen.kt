@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -57,10 +58,15 @@ fun ConstitutionOverviewScreen(onBack: () -> Unit, modifier: Modifier = Modifier
         item {
             Card {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier.size(64.dp).background(Palette.ChatUser, CircleShape),
-                        contentAlignment = Alignment.Center,
-                    ) { Text("👨🏽‍⚖️", fontSize = 34.sp) }
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(R.drawable.ambedkar),
+                        contentDescription = "Dr. B. R. Ambedkar",
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier
+                            .size(68.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, Palette.DirectiveYellow, CircleShape),
+                    )
                     Spacer(Modifier.width(14.dp))
                     Column {
                         Text("Dr. B. R. Ambedkar", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold), color = Palette.White)

@@ -206,7 +206,7 @@ class GemmaTranslator(
          * longest verbatim statute chunk plus the explanation. 1024 is safe for
          * Gemma 3 1B and our ~1800-char chunk cap.
          */
-        private const val MAX_SEQUENCE_TOKENS = 1024
+        private const val MAX_SEQUENCE_TOKENS = 2048
         private const val TOP_K = 40
 
         /**

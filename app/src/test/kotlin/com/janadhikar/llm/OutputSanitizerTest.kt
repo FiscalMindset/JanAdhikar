@@ -26,48 +26,15 @@ class OutputSanitizerTest {
             .isEqualTo("Demand the grounds of arrest.")
     }
 
-    // ── Leaks: the model reciting citations from parametric memory (Rule 1) ──
-
+    // Rich legal answers now WELCOME citations, articles, and landmark cases —
+    // that is the whole point of a helpful explanation. They pass clean (the
+    // exact verified law is still shown separately in the source card).
     @Test
-    fun `leaked section number is caught`() {
-        assertLeak("Under Section 47 you can demand the grounds of arrest.")
-        assertLeak("As per sec. 50 of the code, ask for the grounds.")
-    }
-
-    @Test
-    fun `leaked hindi dhara is caught`() {
-        assertLeak("धारा 47 के अनुसार आप गिरफ्तारी का कारण पूछ सकते हैं।")
-        assertLeak("धारा ४७ के तहत कारण पूछें।") // Devanagari numerals too
-    }
-
-    @Test
-    fun `leaked article is caught`() {
-        assertLeak("Article 22 protects you here.")
-        assertLeak("अनुच्छेद 21 आपके साथ है।")
-    }
-
-    @Test
-    fun `leaked page number is caught`() {
-        assertLeak("See page 21 for details.")
-        assertLeak("पृष्ठ २१ देखें।")
-    }
-
-    @Test
-    fun `leaked act-with-year is caught`() {
-        assertLeak("The Police Act, 1861 forbids this.")
-        assertLeak("भारतीय न्याय संहिता, 2023 इसके विरुद्ध है।")
-    }
-
-    @Test
-    fun `leaked bare-act acronym is caught`() {
-        assertLeak("This is covered by the BNSS.")
-        assertLeak("The IPC forbids this behaviour.")
-    }
-
-    @Test
-    fun `leaked clause and chapter references are caught`() {
-        assertLeak("Clause (1) applies to you.")
-        assertLeak("Chapter V explains custody rules.")
+    fun `article and section references are allowed in rich answers`() {
+        assertClean("Article 21 protects life and personal liberty; see also Article 21A.")
+        assertClean("Under Section 47 the police must tell you the grounds of arrest.")
+        assertClean("अनुच्छेद 21 जीवन और स्वतंत्रता की रक्षा करता है।")
+        assertClean("The landmark Maneka Gandhi case expanded its scope.")
     }
 
     @Test
@@ -76,8 +43,7 @@ class OutputSanitizerTest {
         assertThat(OutputSanitizer.inspect("   \n")).isEqualTo(OutputSanitizer.Verdict.Unusable)
     }
 
-    private fun assertLeak(output: String) {
-        assertThat(OutputSanitizer.inspect(output))
-            .isInstanceOf(OutputSanitizer.Verdict.CitationLeak::class.java)
+    private fun assertClean(output: String) {
+        assertThat(OutputSanitizer.inspect(output)).isInstanceOf(OutputSanitizer.Verdict.Clean::class.java)
     }
 }

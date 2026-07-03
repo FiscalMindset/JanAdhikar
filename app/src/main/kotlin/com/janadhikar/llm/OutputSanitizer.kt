@@ -11,26 +11,8 @@ package com.janadhikar.llm
  */
 object OutputSanitizer {
 
-    private val CITATION_PATTERNS = listOf(
-        Regex("""\bsec(?:tion)?s?\.?\s*\d""", RegexOption.IGNORE_CASE), // Section 47 / Sec. 47
-        Regex("""धारा\s*[\d०-९]"""), //                                    धारा ४७
-        Regex("""अनुच्छेद\s*[\d०-९]"""), //                                 अनुच्छेद 21
-        Regex("""\barticle\s*\d""", RegexOption.IGNORE_CASE), //          Article 21
-        Regex("""\bpage\s*(?:no\.?\s*)?\d""", RegexOption.IGNORE_CASE), // page 21
-        Regex("""पृष्ठ\s*[\d०-९]"""),
-        Regex("""\bact,?\s*(?:of\s*)?(?:18|19|20)\d{2}\b""", RegexOption.IGNORE_CASE), // Act, 2023
-        Regex("""अधिनियम,?\s*(?:18|19|20)\d{2}"""),
-        Regex("""संहिता,?\s*(?:18|19|20)\d{2}"""), //                       संहिता, 2023
-        Regex("""\b(?:IPC|CrPC|BNS|BNSS|BSA)\b"""), //                    bare-act acronyms
-        Regex("""\bclause\s*\(?\d""", RegexOption.IGNORE_CASE),
-        Regex("""\bchapter\s*[IVXL\d]""", RegexOption.IGNORE_CASE),
-    )
-
     sealed interface Verdict {
         data class Clean(val text: String) : Verdict
-
-        /** [pattern] is for logs/tests only — never shown to the user. */
-        data class CitationLeak(val pattern: String) : Verdict
 
         data object Unusable : Verdict
     }
@@ -45,11 +27,11 @@ object OutputSanitizer {
     fun inspect(rawLlmOutput: String): Verdict {
         val text = rawLlmOutput.trim().removeSuffix("<end_of_turn>").trim()
         if (text.isBlank()) return Verdict.Unusable
-        for (pattern in CITATION_PATTERNS) {
-            if (pattern.containsMatchIn(text)) return Verdict.CitationLeak(pattern.pattern)
-        }
-        // Small models (esp. in Hindi) can spew repeated tokens ("6-7 6-7 6-7…")
-        // or echo the prompt. That is worse than the raw law — discard it.
+        // Article/section references are now WELCOME — a rich legal answer cites
+        // them (Article 21, 21A, Maneka Gandhi, etc.). We no longer discard the
+        // answer for that; the exact verified law is still shown in the source
+        // card, so the citizen can always check. We only reject genuine garbage:
+        // small-model token repetition ("6-7 6-7 6-7…") or an echoed prompt.
         if (INSTRUCTION_LEAK.containsMatchIn(text) || isRepetitiveGibberish(text)) return Verdict.Unusable
         return Verdict.Clean(text)
     }

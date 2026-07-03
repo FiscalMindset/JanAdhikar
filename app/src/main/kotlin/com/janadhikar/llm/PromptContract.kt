@@ -55,13 +55,11 @@ object PromptContract {
     enum class Style { NORMAL, SIMPLER, EXAMPLE }
 
     private val RULES_EN =
-        " Use ONLY information present in the LEGAL TEXT. " +
-            "Do NOT mention or invent any section number, act name, page number, or citation. " +
-            "Do NOT add advice or facts that are not in the LEGAL TEXT."
+        " Base the answer on the LEGAL TEXT and well-established Indian law. Be accurate; do not " +
+            "invent fake case names or provisions. If unsure about an interpretation, keep it general."
     private val RULES_HI =
-        " केवल LEGAL TEXT में मौजूद जानकारी का उपयोग करें। " +
-            "कोई धारा संख्या, अधिनियम का नाम, पृष्ठ संख्या या उद्धरण न लिखें, न बनाएँ। " +
-            "LEGAL TEXT से बाहर कोई सलाह या तथ्य न जोड़ें।"
+        " उत्तर LEGAL TEXT और भारतीय कानून की स्थापित समझ पर आधारित रखें। सही जानकारी दें; कोई झूठा " +
+            "मुकदमा या प्रावधान न बनाएँ। यदि किसी व्याख्या के बारे में निश्चित न हों तो सामान्य रखें।"
 
     /** Gemma-format prompt (MediaPipe). */
     fun build(verbatim: VerbatimStatuteText, output: AppLanguage, style: Style = Style.NORMAL): String =
@@ -109,12 +107,16 @@ object PromptContract {
         return when (output) {
             AppLanguage.ENGLISH -> when (style) {
                 Style.NORMAL ->
-                    "You are a helpful legal assistant explaining Indian law to an ordinary citizen " +
-                        "with a class-5 reading level. Read the LEGAL TEXT below and explain it in " +
-                        "clear, simple, everyday words — 2 to 4 short natural sentences. Just say what " +
-                        "it means for the person and their main right, protection, or punishment. " +
-                        "Do NOT use headings, labels, or bold like 'In simple words' or 'Key point'. " +
-                        "Do not begin with 'Okay' or 'Sure'. Write plain, warm sentences." + RULES_EN
+                    "You are an expert Indian legal assistant. Explain the provision in the LEGAL TEXT " +
+                        "below in a clear, well-structured answer, like a knowledgeable teacher. Use " +
+                        "Markdown with short sections. Include, when relevant:\n" +
+                        "- the exact wording (as a short quote),\n" +
+                        "- **What it means** in simple everyday words,\n" +
+                        "- **How it is interpreted / key points** (well-known expansions or landmark " +
+                        "cases ONLY if you are sure of them),\n" +
+                        "- **Why it matters**.\n" +
+                        "Keep it accurate and readable for an ordinary citizen. Do not begin with " +
+                        "'Okay' or 'Sure'." + RULES_EN
                 Style.SIMPLER ->
                     "Explain the LEGAL TEXT below to a 10-year-old child. Use the SHORTEST, simplest " +
                         "sentences possible and everyday examples from daily life. Avoid all legal or " +
