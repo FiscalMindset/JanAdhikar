@@ -78,7 +78,7 @@ class FullPipelineTest {
         return awaitAnswered(0).answer
     }
 
-    private suspend fun awaitAnswered(index: Int): Turn = withTimeout(30_000) {
+    private suspend fun awaitAnswered(index: Int): Turn = withTimeout(90_000) {
         stack.engine.conversation.first {
             it.size > index && it[index].answer !is Answer.Thinking
         }[index]

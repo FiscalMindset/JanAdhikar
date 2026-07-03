@@ -78,17 +78,34 @@ class GemmaTranslator(
             }
         }
 
+    /**
+     * Runs one tiny inference to build the LiteRT/XNNPACK weight cache up front,
+     * off the background load path — so the user's FIRST real question does not
+     * pay the cold-start cost (which is tens of seconds on a phone).
+     */
+    suspend fun warmUp() = withContext(Dispatchers.Default) {
+        runCatching {
+            withTimeoutOrNull(WARMUP_TIMEOUT_MS) {
+                llm.generateResponse("<start_of_turn>user\nhi<end_of_turn>\n<start_of_turn>model\n")
+            }
+        }
+        Unit
+    }
+
     override fun close() = llm.close()
 
     companion object {
         const val MODEL_ASSET = "models/gemma3-1b-it-int4.task"
         const val MODEL_ID = "Gemma 3 1B (4-bit, LiteRT)"
 
-        /** 2–4 explanatory sentences; 256 tokens is comfortable headroom. */
-        private const val MAX_TOKENS = 256
+        /** 2–4 explanatory sentences; 160 tokens keeps latency reasonable. */
+        private const val MAX_TOKENS = 160
         private const val TOP_K = 40
 
         /** Past this we show verbatim text instead (explanation is longer now). */
-        private const val INFERENCE_TIMEOUT_MS = 12_000L
+        private const val INFERENCE_TIMEOUT_MS = 20_000L
+
+        /** Cold-start warm-up can be slow; bound it generously. */
+        private const val WARMUP_TIMEOUT_MS = 40_000L
     }
 }

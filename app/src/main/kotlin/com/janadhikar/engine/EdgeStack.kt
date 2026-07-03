@@ -114,6 +114,7 @@ class EdgeStack private constructor(
             val gemmaDeferred: Deferred<GemmaTranslator?> = scope.async {
                 runCatching {
                     GemmaTranslator(context, provisionAsset(context, GemmaTranslator.MODEL_ASSET))
+                        .also { it.warmUp() } // build the weight cache before first use
                 }.getOrNull()
             }
 
