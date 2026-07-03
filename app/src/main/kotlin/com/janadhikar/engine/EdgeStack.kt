@@ -173,9 +173,25 @@ class EdgeStack private constructor(
 
         /** Copies a model out of assets once; models are immutable per APK. */
         private fun provisionAsset(context: Context, assetPath: String): File {
+            val name = assetPath.substringAfterLast('/')
+
+            // 1) A model pushed to external storage wins. This lets the big
+            //    weights ship OUTSIDE the APK (adb push / on-first-run download)
+            //    so the installable stays small — a 900 MB APK is unreliable to
+            //    transfer over USB/wifi. Path:
+            //    /sdcard/Android/data/com.janadhikar/files/models/<name>
+            context.getExternalFilesDir("models")?.let { ext ->
+                val pushed = File(ext, name)
+                if (pushed.exists() && pushed.length() > 0) return pushed
+            }
+
+            // 2) Otherwise fall back to a copy bundled in the APK assets (if any).
             val dir = context.noBackupFilesDir.apply { mkdirs() }
-            val target = File(dir, assetPath.substringAfterLast('/'))
-            val assetSize = context.assets.openFd(assetPath).use { it.length }
+            val target = File(dir, name)
+            val assetSize = runCatching { context.assets.openFd(assetPath).use { it.length } }.getOrNull()
+                ?: throw IllegalStateException(
+                    "Model '$name' is not in the APK and was not pushed to external storage.",
+                )
             if (target.length() != assetSize) {
                 context.assets.open(assetPath).use { input ->
                     target.outputStream().use { output -> input.copyTo(output) }

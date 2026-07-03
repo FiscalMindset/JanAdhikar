@@ -83,9 +83,15 @@ android {
     }
 
     androidResources {
-        // Model weights, whisper GGML weights, and the knowledge DB must be
-        // stored uncompressed so they can be memory-mapped directly from the APK.
-        noCompress += listOf("tflite", "bin", "db", "task")
+        // The knowledge DB and tokenizer vocab must be stored uncompressed so
+        // they can be memory-mapped directly from the APK.
+        noCompress += listOf("db", "tsv")
+        // The large model weights (embedder .tflite, whisper .bin, Gemma .task)
+        // are NOT packaged — a ~900 MB APK is unreliable to transfer. They ship
+        // via scripts/push_models.sh (adb push) / on-first-run download and are
+        // read from external storage (see EdgeStack.provisionAsset).
+        // (No '!' prefix ⇒ these patterns are IGNORED/excluded from the APK.)
+        ignoreAssetsPattern = "*.tflite:*.bin:*.task"
     }
 
     packaging {

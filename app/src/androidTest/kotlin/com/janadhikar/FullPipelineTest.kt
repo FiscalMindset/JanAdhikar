@@ -79,6 +79,28 @@ class FullPipelineTest {
         assertThat(state).isEqualTo(IncidentState.NoStatute)
     }
 
+    // ── Hybrid keyword retrieval: colloquial crisis language (the reported bug) ──
+
+    @Test
+    fun crisisQueries_resolveToRealOffenceSections_notRefusal() = runBlocking {
+        // Each of these previously returned "No verified legal statute found"
+        // because the words don't resemble legal text. The crisis lexicon +
+        // FTS5 keyword index must now surface a verified BNS offence section.
+        for (query in listOf(
+            "police killed my brother",
+            "police slapped me without any reason",
+            "my phone was stolen",
+            "someone raped my friend",
+        )) {
+            val state = submitAndAwaitResolution(query)
+            assertThat(state).isInstanceOf(IncidentState.Shield::class.java)
+            val citation = (state as IncidentState.Shield).citation
+            // Verified provision from the criminal code, not a hallucination.
+            assertThat(citation.statuteName).contains("Nyaya Sanhita")
+            assertThat(citation.verbatimTextEn).isNotEmpty()
+        }
+    }
+
     private suspend fun submitAndAwaitResolution(query: String): IncidentState {
         stack.engine.cancel()
         stack.engine.submitTypedQuery(query)
