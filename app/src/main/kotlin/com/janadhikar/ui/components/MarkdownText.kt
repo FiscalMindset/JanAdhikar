@@ -1,9 +1,16 @@
 package com.janadhikar.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import com.janadhikar.ui.theme.Palette
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.LocalTextStyle
@@ -45,6 +52,8 @@ fun MarkdownText(
                     line.isBlank() -> Spacer(Modifier.height(6.dp))
                     line.startsWith("### ") -> HeadingLine(line.removePrefix("### "), base)
                     line.startsWith("## ") -> HeadingLine(line.removePrefix("## "), base)
+                    line.startsWith("# ") -> HeadingLine(line.removePrefix("# "), base)
+                    line.startsWith("> ") -> BlockQuote(line.removePrefix("> "), base)
                     BULLET.containsMatchIn(line) -> BulletLine("•", line.replaceFirst(BULLET, ""), base)
                     NUMBERED.containsMatchIn(line) -> {
                         val n = NUMBERED.find(line)!!.groupValues[1]
@@ -60,10 +69,29 @@ fun MarkdownText(
 
 @Composable
 private fun HeadingLine(text: String, base: TextStyle) {
+    Spacer(Modifier.height(4.dp))
     Text(
         inline(text),
-        style = base.copy(fontWeight = FontWeight.Bold, fontSize = base.fontSize * 1.1f),
+        style = base.copy(fontWeight = FontWeight.Bold, fontSize = base.fontSize * 1.12f, color = Palette.Answered),
     )
+}
+
+/** A quoted provision — left accent bar + subtle background, like a citation. */
+@Composable
+private fun BlockQuote(text: String, base: TextStyle) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .background(Palette.NearBlack, RoundedCornerShape(6.dp)),
+    ) {
+        Box(Modifier.width(3.dp).align(Alignment.CenterVertically).background(Palette.DirectiveYellow)) { Text("") }
+        Text(
+            inline(text),
+            style = base.copy(fontStyle = FontStyle.Italic, color = Palette.DirectiveYellow),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+        )
+    }
 }
 
 @Composable
@@ -97,10 +125,19 @@ private fun inline(text: String): AnnotatedString = buildAnnotatedString {
                     i = end + 1
                 } else { append(text[i]); i++ }
             }
+            text.startsWith("==", i) -> { // ==highlight==
+                val end = text.indexOf("==", i + 2)
+                if (end > 0) {
+                    withStyle(SpanStyle(background = Palette.DirectiveYellow.copy(alpha = 0.28f), fontWeight = FontWeight.Medium)) {
+                        append(text.substring(i + 2, end))
+                    }
+                    i = end + 2
+                } else { append(text[i]); i++ }
+            }
             text[i] == '`' -> {
                 val end = text.indexOf('`', i + 1)
                 if (end > 0) {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Medium)) { append(text.substring(i + 1, end)) }
+                    withStyle(SpanStyle(fontWeight = FontWeight.Medium, background = Palette.NearBlack)) { append(text.substring(i + 1, end)) }
                     i = end + 1
                 } else { append(text[i]); i++ }
             }

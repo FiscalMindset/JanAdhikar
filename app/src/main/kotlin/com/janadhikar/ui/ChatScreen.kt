@@ -344,7 +344,7 @@ private fun MetaBlock(a: Answer.Grounded) {
         })
         add("Grounding" to "100% offline · verified statute database")
         add("Match confidence" to "%.0f%%".format(a.confidence * 100))
-        if (a.explanation.generationMillis > 0) add("Generation time" to "${a.explanation.generationMillis} ms")
+        add("Time to answer" to if (a.explanation.generationMillis > 0) "${a.explanation.generationMillis} ms" else "instant (from database)")
         if (a.explanation.approxTokens > 0) add("Approx. tokens" to a.explanation.approxTokens.toString())
         add("Language" to if (a.explanation.language == AppLanguage.HINDI) "Hindi" else "English")
     }
@@ -364,12 +364,14 @@ private fun MetaBlock(a: Answer.Grounded) {
     }
 }
 
-/** Inline metadata chip: model · time · confidence. */
+/** Inline metadata chip: model · ⏱ time · confidence (time ALWAYS shown). */
 @Composable
 private fun MetaChip(a: Answer.Grounded) {
+    val ms = a.explanation.generationMillis
+    val time = if (ms > 0) "%.1fs".format(ms / 1000.0) else "instant"
     val meta = buildString {
         append(a.explanation.modelId.substringBefore(" (").ifBlank { "verbatim" })
-        if (a.explanation.generationMillis > 0) append(" · ${a.explanation.generationMillis / 1000}s")
+        append(" · ⏱ $time")
         append(" · ${"%.0f".format(a.confidence * 100)}%")
     }
     Text(

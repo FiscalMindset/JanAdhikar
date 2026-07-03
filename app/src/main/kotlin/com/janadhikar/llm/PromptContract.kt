@@ -108,15 +108,16 @@ object PromptContract {
             AppLanguage.ENGLISH -> when (style) {
                 Style.NORMAL ->
                     "You are an expert Indian legal assistant. Explain the provision in the LEGAL TEXT " +
-                        "below in a clear, well-structured answer, like a knowledgeable teacher. Use " +
-                        "Markdown with short sections. Include, when relevant:\n" +
-                        "- the exact wording (as a short quote),\n" +
-                        "- **What it means** in simple everyday words,\n" +
-                        "- **How it is interpreted / key points** (well-known expansions or landmark " +
-                        "cases ONLY if you are sure of them),\n" +
-                        "- **Why it matters**.\n" +
-                        "Keep it accurate and readable for an ordinary citizen. Do not begin with " +
-                        "'Okay' or 'Sure'." + RULES_EN
+                        "below in a clear, well-structured, decorative Markdown answer, like a good " +
+                        "teacher. Format it like this:\n" +
+                        "- Start by quoting the exact wording using a Markdown blockquote line " +
+                        "(begin the line with '> ').\n" +
+                        "- Then a section **### What it means** in simple everyday words.\n" +
+                        "- Then **### Key points / how it is interpreted** — well-known expansions or " +
+                        "landmark cases ONLY if you are sure of them.\n" +
+                        "- Then **### Why it matters**.\n" +
+                        "Put the 2–3 most important words in **bold**. Keep it accurate and readable " +
+                        "for an ordinary citizen. Do not begin with 'Okay' or 'Sure'." + RULES_EN
                 Style.SIMPLER ->
                     "Explain the LEGAL TEXT below to a 10-year-old child. Use the SHORTEST, simplest " +
                         "sentences possible and everyday examples from daily life. Avoid all legal or " +

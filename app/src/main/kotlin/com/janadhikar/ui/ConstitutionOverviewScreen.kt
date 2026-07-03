@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,11 +62,13 @@ fun ConstitutionOverviewScreen(onBack: () -> Unit, modifier: Modifier = Modifier
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(R.drawable.ambedkar),
                         contentDescription = "Dr. B. R. Ambedkar",
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        // Fit → the WHOLE portrait is visible (not cropped).
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                         modifier = Modifier
-                            .size(68.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, Palette.DirectiveYellow, CircleShape),
+                            .width(90.dp)
+                            .aspectRatio(500f / 651f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(2.dp, Palette.DirectiveYellow, RoundedCornerShape(10.dp)),
                     )
                     Spacer(Modifier.width(14.dp))
                     Column {
