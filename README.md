@@ -17,6 +17,16 @@ with the exact law behind it.**
 
 <br/><br/>
 
+### 📲 [**Download Janadhikar v1.0.0 (APK)**](https://github.com/FiscalMindset/JanAdhikar/releases/latest)
+
+<a href="https://github.com/FiscalMindset/JanAdhikar/releases/latest"><img src="https://img.shields.io/github/v/release/FiscalMindset/JanAdhikar?style=for-the-badge&label=Latest%20Release&color=3DDC84&logo=android&logoColor=white" alt="Latest release"/></a>
+<img src="https://img.shields.io/badge/APK-247%20MB-555?style=for-the-badge" alt="APK size"/>
+<img src="https://img.shields.io/badge/Requires-Android%208.0%2B%20(arm64)-3DDC84?style=for-the-badge" alt="Requirements"/>
+
+<sub>Install → open once on WiFi to fetch the AI model → use it fully offline.</sub>
+
+<br/><br/>
+
 <table>
 <tr>
 <td align="center" width="33%">
@@ -73,11 +83,15 @@ flowchart LR
 
 ### Option A — install the APK (for users / testers)
 
-1. Download `app-debug.apk` and install it (allow *install from unknown sources*).
+1. **[Download `janadhikar-v1.0.0.apk`](https://github.com/FiscalMindset/JanAdhikar/releases/latest)** and install it (allow *install from unknown sources*).
 2. Open it **once on WiFi** — it downloads the ~350 MB AI model with a progress bar.
 3. Done — it now works **fully offline**. Type or tap the mic and ask.
 
 > First run needs internet + ~1 GB free storage. After that, no network is used.
+> Requires Android 8.0+ (arm64). The APK is signed with the Janadhikar release key.
+>
+> **Verify the download (optional):** `shasum -a 256 janadhikar-v1.0.0.apk` →
+> `526b801b994b65ee788428ab220eb165151e6219c0fcc6ef3e37f3b9f084a82b`
 
 ### Option B — build from source (for developers)
 
@@ -91,6 +105,9 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 HF_TOKEN=hf_xxx ./scripts/fetch_models.sh
 ./scripts/push_models.sh
 ```
+
+> A signed **release** build (`./gradlew :app:assembleRelease`) needs a
+> `keystore.properties` at the repo root (gitignored) — see the release notes.
 
 ---
 
