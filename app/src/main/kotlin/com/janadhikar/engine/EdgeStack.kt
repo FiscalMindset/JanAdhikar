@@ -16,6 +16,8 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.Closeable
 import java.io.File
@@ -94,6 +96,11 @@ class EdgeStack private constructor(
                 embed = embedder::embed,
             )
 
+            // whisper_context is NOT thread-safe. The engine's streaming decode
+            // and its final decode can overlap, so every transcribe goes through
+            // this mutex — concurrent native decode is the classic whisper.cpp
+            // SIGSEGV.
+            val whisperMutex = Mutex()
             val engine = IncidentEngine(
                 scope = scope,
                 audioSource = { AudioCapture().stream() },
@@ -101,8 +108,10 @@ class EdgeStack private constructor(
                     // First voice use awaits the background whisper load.
                     when (val whisper = whisperDeferred.await()) {
                         null -> ""
-                        else -> withContext(Dispatchers.Default) {
-                            whisper.transcribe(pcm, WhisperBridge.Lang.AUTO)
+                        else -> whisperMutex.withLock {
+                            withContext(Dispatchers.Default) {
+                                whisper.transcribe(pcm, WhisperBridge.Lang.AUTO)
+                            }
                         }
                     }
                 },

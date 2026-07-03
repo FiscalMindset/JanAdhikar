@@ -9,6 +9,7 @@ import com.janadhikar.memory.model.VerifiedCitation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,6 +50,10 @@ class IncidentEngine(
     private val _state = MutableStateFlow<IncidentState>(IncidentState.Idle)
     val state: StateFlow<IncidentState> = _state.asStateFlow()
 
+    /** Recent resolved shields, newest first — the Trigger screen's history. */
+    private val _history = MutableStateFlow<List<IncidentState.Shield>>(emptyList())
+    val history: StateFlow<List<IncidentState.Shield>> = _history.asStateFlow()
+
     private var captureJob: Job? = null
     private var pcmWindow = FloatArray(0)
     private var startedAt = 0L
@@ -66,30 +71,18 @@ class IncidentEngine(
         _state.value = IncidentState.Active("", AgentPhase.LISTENING, 0L, isVoice = true)
 
         captureJob = scope.launch {
-            var samplesSinceDecode = 0
             try {
+                // Accumulate audio only; transcribe ONCE on stop. Re-decoding the
+                // whole growing window every couple of seconds was O(n²) and made
+                // voice sluggish for no benefit — the transcript is only needed at
+                // resolution time. The elapsed clock still updates the timer.
                 audioSource.stream().collect { chunk ->
                     pcmWindow += chunk
-                    samplesSinceDecode += chunk.size
-
                     if (elapsed() >= MAX_CAPTURE_MILLIS) {
                         stopAndResolve()
                         return@collect
                     }
-                    if (samplesSinceDecode >= DECODE_EVERY_SAMPLES) {
-                        samplesSinceDecode = 0
-                        _state.value = IncidentState.Active(
-                            transcript = currentTranscript(),
-                            phase = AgentPhase.TRANSCRIBING,
-                            elapsedMillis = elapsed(),
-                            isVoice = true,
-                        )
-                        val text = transcriber.transcribe(pcmWindow)
-                        // cancel() may have fired while whisper was decoding
-                        if (_state.value is IncidentState.Active) {
-                            _state.value = IncidentState.Active(text, AgentPhase.LISTENING, elapsed(), isVoice = true)
-                        }
-                    }
+                    _state.value = IncidentState.Active("", AgentPhase.LISTENING, elapsed(), isVoice = true)
                 }
             } catch (e: CancellationException) {
                 // Normal teardown (stopAndResolve/cancel). MUST be rethrown, not
@@ -107,9 +100,12 @@ class IncidentEngine(
     /** User tapped stop (or the capture cap fired): final decode, then resolve. */
     fun stopAndResolve() {
         val active = _state.value as? IncidentState.Active ?: return
-        captureJob?.cancel()
+        val job = captureJob
         captureJob = null
         scope.launch {
+            // Wait for the streaming decode to fully stop before the final one —
+            // whisper_context is single-threaded (see EdgeStack whisperMutex).
+            job?.cancelAndJoin()
             val finalTranscript = if (pcmWindow.isNotEmpty()) {
                 _state.value = IncidentState.Active(active.transcript, AgentPhase.TRANSCRIBING, elapsed(), isVoice = true)
                 transcriber.transcribe(pcmWindow)
@@ -140,21 +136,38 @@ class IncidentEngine(
         }
         _state.value = IncidentState.Active(query.text, AgentPhase.SEARCHING, elapsed(), isVoice = sessionIsVoice)
 
-        when (val result = retrieve(query)) {
-            is RetrievalResult.NoVerifiedStatute -> _state.value = IncidentState.NoStatute
-            is RetrievalResult.Match -> {
-                _state.value = IncidentState.Active(query.text, AgentPhase.TRANSLATING, elapsed(), isVoice = sessionIsVoice)
-                val language = preferredLanguage() ?: query.language
-                val directive = translate(result.primary, language)
-                _state.value = IncidentState.Shield(
-                    directive = directive,
-                    citation = result.primary,
-                    related = result.related,
-                    confidence = result.confidence,
-                    redirectedFromSuperseded = result.redirectedFromSuperseded,
-                )
+        try {
+            when (val result = retrieve(query)) {
+                is RetrievalResult.NoVerifiedStatute -> _state.value = IncidentState.NoStatute
+                is RetrievalResult.Match -> {
+                    _state.value = IncidentState.Active(query.text, AgentPhase.TRANSLATING, elapsed(), isVoice = sessionIsVoice)
+                    val language = preferredLanguage() ?: query.language
+                    val directive = translate(result.primary, language)
+                    val shield = IncidentState.Shield(
+                        directive = directive,
+                        citation = result.primary,
+                        related = result.related,
+                        confidence = result.confidence,
+                        redirectedFromSuperseded = result.redirectedFromSuperseded,
+                    )
+                    _history.value = (listOf(shield) + _history.value).distinctBy {
+                        it.citation.chunkId
+                    }.take(MAX_HISTORY)
+                    _state.value = shield
+                }
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Retrieval/translation must never crash the app — fail to the
+            // governed refusal instead.
+            _state.value = IncidentState.NoStatute
         }
+    }
+
+    /** Re-open a past result from history without re-running retrieval. */
+    fun showFromHistory(shield: IncidentState.Shield) {
+        _state.value = shield
     }
 
     /** Hard reset from any state. Discards the PCM window immediately (privacy). */
@@ -165,16 +178,12 @@ class IncidentEngine(
         _state.value = IncidentState.Idle
     }
 
-    private fun currentTranscript(): String =
-        (_state.value as? IncidentState.Active)?.transcript.orEmpty()
-
     private fun elapsed(): Long = clock() - startedAt
 
     companion object {
-        /** Re-run whisper on the window every ~2 s of new audio. */
-        private const val DECODE_EVERY_SAMPLES = 2 * 16_000
-
         /** Incident capture cap; past this we resolve with what we have. */
         const val MAX_CAPTURE_MILLIS = 60_000L
+
+        private const val MAX_HISTORY = 20
     }
 }

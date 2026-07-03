@@ -52,28 +52,19 @@ class MainActivity : ComponentActivity() {
             dispatcher = SmsDispatcher(applicationContext),
         )
 
-        // Foreground service mirrors the engine: alive during Active only.
+        // Stop the mic foreground service the moment a voice session ends
+        // (resolution, idle, or failure). The service is STARTED imperatively
+        // in startVoice() — before the mic is opened — so on Android 14+ it is
+        // already running when AudioRecord touches the microphone.
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 app.edgeStackFlow
                     .filterNotNull()
                     .flatMapLatest { it.engine.state }
                     .collectLatest { state ->
-                        val serviceIntent = Intent(this@MainActivity, IncidentPipelineService::class.java)
-                        // Only a genuine MIC session needs the foreground
-                        // microphone service. A typed query (isVoice = false)
-                        // must NOT start it — an FGS of type microphone without
-                        // a granted RECORD_AUDIO permission is a hard crash on
-                        // Android 14+.
-                        val micSession = state is IncidentState.Active && state.isVoice &&
-                            ContextCompat.checkSelfPermission(
-                                this@MainActivity,
-                                Manifest.permission.RECORD_AUDIO,
-                            ) == PackageManager.PERMISSION_GRANTED
-                        if (micSession) {
-                            startForegroundService(serviceIntent)
-                        } else {
-                            stopService(serviceIntent)
+                        val stillCapturing = state is IncidentState.Active && state.isVoice
+                        if (!stillCapturing) {
+                            stopService(Intent(this@MainActivity, IncidentPipelineService::class.java))
                         }
                     }
             }
@@ -118,6 +109,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startVoice() {
+        // Start the foreground microphone service FIRST so it is running before
+        // AudioRecord opens the mic (Android 14+ requires this ordering). Never
+        // let a service-start failure crash the app.
+        runCatching {
+            startForegroundService(Intent(this, IncidentPipelineService::class.java))
+        }
         app.edgeStack?.engine?.startVoiceCapture()
     }
 }

@@ -49,18 +49,19 @@ private val Scheme = darkColorScheme(
     onError = Palette.White,
 )
 
-/** Massive by default: the nearest reader may be holding the phone up at arm's length. */
+/** Large and high-contrast, but not overwhelming — sized to fit a directive on
+ *  screen without scrolling and keep the citation card readable. */
 private val JanadhikarTypography = Typography(
     // The directive.
-    displayLarge = TextStyle(fontSize = 42.sp, lineHeight = 50.sp, fontWeight = FontWeight.Black),
+    displayLarge = TextStyle(fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.Black),
     // Live transcript.
-    headlineMedium = TextStyle(fontSize = 30.sp, lineHeight = 40.sp, fontWeight = FontWeight.SemiBold),
+    headlineMedium = TextStyle(fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.SemiBold),
     // Buttons / section labels.
-    titleLarge = TextStyle(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold),
+    titleLarge = TextStyle(fontSize = 19.sp, lineHeight = 25.sp, fontWeight = FontWeight.Bold),
     // Receipt card body.
-    bodyLarge = TextStyle(fontSize = 19.sp, lineHeight = 26.sp),
+    bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 22.sp),
     // Hints, tickers.
-    bodyMedium = TextStyle(fontSize = 17.sp, lineHeight = 24.sp),
+    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 20.sp),
 )
 
 @Composable

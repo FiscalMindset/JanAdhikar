@@ -1,9 +1,12 @@
 package com.janadhikar.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -11,6 +14,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
@@ -29,6 +36,9 @@ import com.janadhikar.ui.theme.Palette
  * The receipt: a white card of monospace, machine-verified fact. EVERY value
  * rendered here is a typed field from a database row (Rule 2) — this
  * composable takes a [VerifiedCitation] and must never accept free text.
+ *
+ * Tapping the card expands the exact verbatim statute text (the "source"),
+ * so a citizen can read the actual law, not just its citation.
  */
 @Composable
 fun CitationCard(
@@ -36,22 +46,32 @@ fun CitationCard(
     language: AppLanguage,
     modifier: Modifier = Modifier,
 ) {
+    var expanded by remember { mutableStateOf(false) }
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(Palette.PaperWhite, RoundedCornerShape(8.dp))
+            .clickable { expanded = !expanded }
             .padding(20.dp)
             .testTag("citation_card"),
     ) {
-        Text(
-            text = "⚖ " + stringResource(R.string.verified_record),
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp,
-            ),
-            color = Palette.InkBlack,
-        )
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "⚖ " + stringResource(R.string.verified_record),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                ),
+                color = Palette.InkBlack,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = if (expanded) "▲" else "▼ " + stringResource(R.string.read_full_text),
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                color = Palette.InkBlack.copy(alpha = 0.55f),
+            )
+        }
         DashedDivider()
 
         val statuteName = when (language) {
@@ -66,6 +86,23 @@ fun CitationCard(
         ReceiptRow(unitLabel, citation.sectionNumber)
         citation.clause?.let { ReceiptRow(stringResource(R.string.clause_label), it) }
         ReceiptRow(stringResource(R.string.page_label), citation.pageNumber.toString())
+
+        AnimatedVisibility(visible = expanded) {
+            Column {
+                DashedDivider()
+                val fullText = when (language) {
+                    AppLanguage.ENGLISH -> citation.verbatimTextEn
+                    AppLanguage.HINDI -> citation.verbatimTextHi
+                }
+                Text(
+                    text = fullText,
+                    style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
+                    color = Palette.InkBlack,
+                    modifier = Modifier.testTag("verbatim_text"),
+                )
+                Spacer(Modifier.height(6.dp))
+            }
+        }
 
         DashedDivider()
         ReceiptRow(stringResource(R.string.source_label), citation.sourceDocument, small = true)

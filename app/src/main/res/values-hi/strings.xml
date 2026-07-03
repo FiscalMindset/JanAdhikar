@@ -19,9 +19,12 @@
     <string name="active_searching">सत्यापित धाराओं में खोज जारी…</string>
     <string name="active_translating">आपका निर्देश तैयार हो रहा है…</string>
     <string name="tap_to_stop">बोलना पूरा होने पर टैप करें</string>
+    <string name="cancel">रद्द करें</string>
 
     <!-- Resolution: citation card -->
     <string name="verified_record">सत्यापित अभिलेख</string>
+    <string name="read_full_text">पूरा पढ़ें</string>
+    <string name="recent">हाल के</string>
     <string name="statute_label">क़ानून</string>
     <string name="section_label">धारा</string>
     <string name="article_label">अनुच्छेद</string>

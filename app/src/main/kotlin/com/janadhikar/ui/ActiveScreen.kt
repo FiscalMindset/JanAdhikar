@@ -19,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -41,14 +42,15 @@ fun ActiveScreen(
     elapsedMillis: Long,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
+    onCancel: () -> Unit = {},
 ) {
     val scroll = rememberScrollState()
     // Auto-scroll: always pin to the newest words.
     LaunchedEffect(transcript) { scroll.animateScrollTo(scroll.maxValue) }
 
-    Column(modifier = modifier.fillMaxSize().padding(24.dp)) {
+    Column(modifier = modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 16.dp)) {
 
-        // ── REC header ──
+        // ── REC header + Cancel (so a voice session is never a one-way trap) ──
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(14.dp).background(Palette.RecordRed, CircleShape))
             Spacer(Modifier.width(10.dp))
@@ -57,6 +59,14 @@ fun ActiveScreen(
                 style = MaterialTheme.typography.titleLarge,
                 color = Palette.RecordRed,
             )
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onCancel, modifier = Modifier.testTag("cancel_button")) {
+                Text(
+                    stringResource(R.string.cancel),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Palette.DimGray,
+                )
+            }
         }
         Spacer(Modifier.height(20.dp))
 

@@ -20,9 +20,12 @@
     <string name="active_searching">Searching verified statutes…</string>
     <string name="active_translating">Preparing your directive…</string>
     <string name="tap_to_stop">TAP WHEN DONE SPEAKING</string>
+    <string name="cancel">Cancel</string>
 
     <!-- Resolution: citation card -->
     <string name="verified_record">VERIFIED RECORD</string>
+    <string name="read_full_text">tap to read</string>
+    <string name="recent">Recent</string>
     <string name="statute_label">Statute</string>
     <string name="section_label">Section</string>
     <string name="article_label">Article</string>

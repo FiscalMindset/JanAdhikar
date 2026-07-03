@@ -8,7 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -44,6 +48,8 @@ fun TriggerScreen(
     onStartVoice: () -> Unit,
     onSubmitText: (String) -> Unit,
     modifier: Modifier = Modifier,
+    history: List<com.janadhikar.engine.IncidentState.Shield> = emptyList(),
+    onHistoryClick: (com.janadhikar.engine.IncidentState.Shield) -> Unit = {},
     /** Red status line (warm-up failure, mic error). Never LLM/DB content. */
     statusMessage: String? = null,
 ) {
@@ -55,7 +61,7 @@ fun TriggerScreen(
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(16.dp))
         Text(
             text = stringResource(R.string.app_name).uppercase(),
             style = MaterialTheme.typography.titleLarge,
@@ -142,6 +148,37 @@ fun TriggerScreen(
         ) {
             Text(stringResource(R.string.trigger_submit), style = MaterialTheme.typography.titleLarge)
         }
-        Spacer(Modifier.height(24.dp))
+
+        // ── Recent results (history) — tap to reopen without re-querying ──
+        if (history.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.recent).uppercase(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Palette.DimGray,
+                modifier = Modifier.align(Alignment.Start),
+            )
+            Spacer(Modifier.height(8.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(history) { shield ->
+                    val unit = if (shield.citation.unit == "ARTICLE") "Art." else "Sec."
+                    AssistChip(
+                        onClick = { onHistoryClick(shield) },
+                        label = {
+                            Text(
+                                "$unit ${shield.citation.sectionNumber}",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = Palette.NearBlack,
+                            labelColor = Palette.DirectiveYellow,
+                        ),
+                        modifier = Modifier.testTag("history_chip"),
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
     }
 }

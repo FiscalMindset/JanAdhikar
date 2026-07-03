@@ -1,6 +1,8 @@
 package com.janadhikar.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,63 +32,75 @@ fun JanadhikarRoot(
 ) {
     JanadhikarTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = Palette.Black) {
-            val edgeStack by edgeStackFlow.collectAsState()
-            val stack = edgeStack
+            // safeDrawingPadding keeps ALL content clear of the status bar (top)
+            // and the gesture/navigation bar (bottom) — without it, buttons sit
+            // under the nav bar and are untappable, and text runs under the
+            // status bar / notch.
+            Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+                val edgeStack by edgeStackFlow.collectAsState()
+                val stack = edgeStack
 
-            if (stack == null) {
-                val error by warmupError.collectAsState()
-                TriggerScreen(
-                    engineReady = false,
-                    onStartVoice = {},
-                    onSubmitText = {},
-                    statusMessage = error?.let {
-                        stringResource(R.string.engine_assets_missing) + "\n" + it
-                    },
-                )
-                return@Surface
-            }
-
-            val state by stack.engine.state.collectAsState()
-
-            // Arm/disarm the SOS countdown in lockstep with Resolution.
-            LaunchedEffect(state) {
-                when (state) {
-                    is IncidentState.Shield, IncidentState.NoStatute -> sos.arm()
-                    IncidentState.Idle -> sos.disarm()
-                    else -> Unit
-                }
-            }
-
-            when (val s = state) {
-                is IncidentState.Idle -> TriggerScreen(
-                    engineReady = true,
-                    onStartVoice = onVoiceRequested,
-                    onSubmitText = stack.engine::submitTypedQuery,
-                )
-                is IncidentState.Active -> ActiveScreen(
-                    transcript = s.transcript,
-                    phase = s.phase,
-                    elapsedMillis = s.elapsedMillis,
-                    onStop = stack.engine::stopAndResolve,
-                )
-                is IncidentState.Shield -> ShieldScreen(
-                    shield = s,
-                    sos = sos,
-                    onDone = stack.engine::cancel,
-                )
-                IncidentState.NoStatute -> NoStatuteScreen(
-                    sos = sos,
-                    onDone = stack.engine::cancel,
-                )
-                is IncidentState.Failure -> {
-                    // Mic/pipeline failure: back to Trigger with the text path
-                    // still usable. reasonForLog is never rendered.
+                if (stack == null) {
+                    val error by warmupError.collectAsState()
                     TriggerScreen(
+                        engineReady = false,
+                        onStartVoice = {},
+                        onSubmitText = {},
+                        statusMessage = error?.let {
+                            stringResource(R.string.engine_assets_missing) + "\n" + it
+                        },
+                    )
+                    return@Box
+                }
+
+                val state by stack.engine.state.collectAsState()
+                val history by stack.engine.history.collectAsState()
+
+                // Arm/disarm the SOS countdown in lockstep with Resolution.
+                LaunchedEffect(state) {
+                    when (state) {
+                        is IncidentState.Shield, IncidentState.NoStatute -> sos.arm()
+                        IncidentState.Idle -> sos.disarm()
+                        else -> Unit
+                    }
+                }
+
+                when (val s = state) {
+                    is IncidentState.Idle -> TriggerScreen(
                         engineReady = true,
                         onStartVoice = onVoiceRequested,
                         onSubmitText = stack.engine::submitTypedQuery,
-                        statusMessage = stringResource(R.string.mic_error),
+                        history = history,
+                        onHistoryClick = stack.engine::showFromHistory,
                     )
+                    is IncidentState.Active -> ActiveScreen(
+                        transcript = s.transcript,
+                        phase = s.phase,
+                        elapsedMillis = s.elapsedMillis,
+                        onStop = stack.engine::stopAndResolve,
+                        onCancel = stack.engine::cancel,
+                    )
+                    is IncidentState.Shield -> ShieldScreen(
+                        shield = s,
+                        sos = sos,
+                        onDone = stack.engine::cancel,
+                    )
+                    IncidentState.NoStatute -> NoStatuteScreen(
+                        sos = sos,
+                        onDone = stack.engine::cancel,
+                    )
+                    is IncidentState.Failure -> {
+                        // Mic/pipeline failure: back to Trigger with the text path
+                        // still usable. reasonForLog is never rendered.
+                        TriggerScreen(
+                            engineReady = true,
+                            onStartVoice = onVoiceRequested,
+                            onSubmitText = stack.engine::submitTypedQuery,
+                            history = history,
+                            onHistoryClick = stack.engine::showFromHistory,
+                            statusMessage = stringResource(R.string.mic_error),
+                        )
+                    }
                 }
             }
         }

@@ -20,9 +20,15 @@ class WhisperBridge private constructor(private var ctxPtr: Long) : Closeable {
         HINDI("hi"),
     }
 
-    /** Blocking; call from a background dispatcher. Thread-confined: one caller at a time. */
+    /**
+     * Blocking; call from a background dispatcher. NOT thread-safe — the caller
+     * must serialize calls (whisper_context has no internal locking; concurrent
+     * decode segfaults). Buffers shorter than [MIN_SAMPLES] are ignored: feeding
+     * whisper a near-empty window can crash inside ggml.
+     */
     fun transcribe(pcm16k: FloatArray, lang: Lang): String {
         check(ctxPtr != 0L) { "WhisperBridge used after close()" }
+        if (pcm16k.size < MIN_SAMPLES) return ""
         return nativeTranscribe(ctxPtr, pcm16k, lang.whisperCode).trim()
     }
 
@@ -39,6 +45,9 @@ class WhisperBridge private constructor(private var ctxPtr: Long) : Closeable {
 
     companion object {
         const val SAMPLE_RATE_HZ = 16_000
+
+        /** ~0.5 s. whisper needs a non-trivial window; below this it can segfault. */
+        private const val MIN_SAMPLES = SAMPLE_RATE_HZ / 2
 
         init {
             System.loadLibrary("janadhikar_whisper")

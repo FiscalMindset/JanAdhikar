@@ -45,6 +45,10 @@ Java_com_janadhikar_stt_WhisperBridge_nativeTranscribe(
     auto *ctx = reinterpret_cast<whisper_context *>(ctx_ptr);
     if (ctx == nullptr) return env->NewStringUTF("");
 
+    // Guard: whisper_full on a near-empty buffer can fault inside ggml.
+    jsize guard_n = env->GetArrayLength(pcm);
+    if (guard_n < WHISPER_SAMPLE_RATE / 2) return env->NewStringUTF("");
+
     const char *lang = env->GetStringUTFChars(lang_code, nullptr);
 
     whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
