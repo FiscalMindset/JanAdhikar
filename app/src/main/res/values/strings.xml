@@ -17,6 +17,14 @@
     <string name="status_voice">Voice</string>
     <string name="engine_assets_missing">Offline engine could not start — model or knowledge files are missing from this build.</string>
     <string name="mic_button">Speak</string>
+    <string name="chat_tagline">Ask anything about your rights and Indian law — in your own words. 100% offline.</string>
+    <string name="ask_anything">Ask about your rights…</string>
+    <string name="thinking">Thinking…</string>
+    <string name="copied">Copied</string>
+    <string name="copy">Copy</string>
+    <string name="example_1">What are my fundamental rights?</string>
+    <string name="example_2">Police slapped me without any reason</string>
+    <string name="example_3">What is the punishment for theft?</string>
 
     <!-- Active -->
     <string name="active_listening">Listening…</string>

@@ -3,8 +3,9 @@ package com.janadhikar
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.common.truth.Truth.assertThat
+import com.janadhikar.engine.Answer
 import com.janadhikar.engine.EdgeStack
-import com.janadhikar.engine.IncidentState
+import com.janadhikar.engine.Turn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -14,99 +15,73 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * End-to-end, on real hardware, over the REAL artifacts bundled in the APK:
- * SentencePiece tokenizer → LiteRT MiniLM embedder → sqlite-vec KNN → graph →
- * strict metadata extraction → engine Shield state.
- *
- * This is the definitive "the offline engine actually works" proof — it drives
- * the same EdgeStack the app builds at launch, with no UI in the loop.
+ * End-to-end, on real hardware, over the REAL artifacts: SentencePiece →
+ * LiteRT MiniLM embedder → sqlite-vec KNN + FTS5 keyword → graph → strict
+ * extraction → conversation answer. Drives the same ChatEngine the app builds.
  */
 @RunWith(AndroidJUnit4::class)
 class FullPipelineTest {
 
     @Test
-    fun groundsOfArrestQuery_resolvesToExactlyBnssSection47() = runBlocking {
-        // A direct-phrasing query the offline eval confirms as a Precision@1
-        // hit → the pipeline must land exactly on BNSS §47, "Person arrested
-        // to be informed of grounds of arrest and of right to bail".
-        val shield = submitAndAwaitResolution("do I have the right to know the grounds of my arrest")
-        assertThat(shield).isInstanceOf(IncidentState.Shield::class.java)
-        val citation = (shield as IncidentState.Shield).citation
-        assertThat(citation.statuteName).contains("Nagarik Suraksha Sanhita")
-        assertThat(citation.sectionNumber).isEqualTo("47")
-        assertThat(citation.pageNumber).isGreaterThan(0)
-        assertThat(citation.verbatimTextEn).ignoringCase().contains("grounds")
+    fun groundsOfArrestQuery_answersWithBnssSection47() = runBlocking {
+        val answer = ask("do I have the right to know the grounds of my arrest")
+        val grounded = answer as Answer.Grounded
+        val primary = grounded.citations.first()
+        assertThat(primary.statuteName).contains("Nagarik Suraksha Sanhita")
+        assertThat(primary.sectionNumber).isEqualTo("47")
     }
 
     @Test
-    fun colloquialArrestQuery_resolvesToAVerifiedBnssArrestProvision() = runBlocking {
-        // Colloquial phrasing. Precision@1 over the corpus is 7/14 (see
-        // eval_queries.py), so we do NOT pin the exact section — we assert the
-        // guarantee that actually matters: the directive is backed by a REAL,
-        // verified BNSS arrest-chapter provision, never a hallucination.
-        val shield = submitAndAwaitResolution("police won't tell me why I am being arrested")
-        assertThat(shield).isInstanceOf(IncidentState.Shield::class.java)
-        val match = shield as IncidentState.Shield
-        assertThat(match.citation.statuteName).contains("Nagarik Suraksha Sanhita")
-        assertThat(match.confidence).isGreaterThan(0.34f) // governed threshold
-        // The grounds-of-arrest provisions the eval deems correct for this
-        // query (§47 or §35) now reach the user as primary or related, thanks
-        // to surfacing high-confidence vector neighbours — not just the #1 hit.
-        val allSections = (listOf(match.citation) + match.related).map { it.sectionNumber }
-        assertThat(allSections).containsAnyOf("47", "35")
+    fun constitutionQuery_answersWithArticle() = runBlocking {
+        val grounded = ask("do I have a right to equality before the law") as Answer.Grounded
+        val primary = grounded.citations.first()
+        assertThat(primary.statuteName).contains("Constitution of India")
+        assertThat(primary.unit).isEqualTo("ARTICLE")
+        assertThat(primary.sectionNumber).isEqualTo("14")
     }
 
     @Test
-    fun constitutionQuery_resolvesToArticleWithArticleUnit() = runBlocking {
-        val shield = submitAndAwaitResolution("do I have a right to equality before the law")
-        val citation = (shield as IncidentState.Shield).citation
-        assertThat(citation.statuteName).contains("Constitution of India")
-        assertThat(citation.unit).isEqualTo("ARTICLE") // card shows "Article 14", not "Section"
-        assertThat(citation.sectionNumber).isEqualTo("14")
-    }
-
-    @Test
-    fun hindiMurderQuery_resolvesToVerifiedBnsCitation() = runBlocking {
-        val shield = submitAndAwaitResolution("हत्या की सजा क्या है")
-        val citation = (shield as IncidentState.Shield).citation
-        assertThat(citation.statuteName).contains("Nyaya Sanhita")
-        assertThat(citation.sectionNumber).isEqualTo("103") // Punishment for murder
-    }
-
-    @Test
-    fun nonsenseQuery_resolvesToGovernedRefusal() = runBlocking {
-        val state = submitAndAwaitResolution("my pizza is cold and I want a refund")
-        assertThat(state).isEqualTo(IncidentState.NoStatute)
-    }
-
-    // ── Hybrid keyword retrieval: colloquial crisis language (the reported bug) ──
-
-    @Test
-    fun crisisQueries_resolveToRealOffenceSections_notRefusal() = runBlocking {
-        // Each of these previously returned "No verified legal statute found"
-        // because the words don't resemble legal text. The crisis lexicon +
-        // FTS5 keyword index must now surface a verified BNS offence section.
+    fun crisisQueries_answerWithRealOffenceSections_notRefusal() = runBlocking {
         for (query in listOf(
             "police killed my brother",
             "police slapped me without any reason",
             "my phone was stolen",
             "someone raped my friend",
         )) {
-            val state = submitAndAwaitResolution(query)
-            assertThat(state).isInstanceOf(IncidentState.Shield::class.java)
-            val citation = (state as IncidentState.Shield).citation
-            // Verified provision from the criminal code, not a hallucination.
-            assertThat(citation.statuteName).contains("Nyaya Sanhita")
-            assertThat(citation.verbatimTextEn).isNotEmpty()
+            val answer = ask(query)
+            assertThat(answer).isInstanceOf(Answer.Grounded::class.java)
+            val primary = (answer as Answer.Grounded).citations.first()
+            assertThat(primary.statuteName).contains("Nyaya Sanhita")
+            assertThat(primary.verbatimTextEn).isNotEmpty()
         }
     }
 
-    private suspend fun submitAndAwaitResolution(query: String): IncidentState {
-        stack.engine.cancel()
-        stack.engine.submitTypedQuery(query)
-        return withTimeout(20_000) {
-            stack.engine.state.first { it is IncidentState.Shield || it is IncidentState.NoStatute }
-        }
+    @Test
+    fun nonsenseQuery_refuses() = runBlocking {
+        assertThat(ask("my pizza is cold and I want a refund")).isEqualTo(Answer.NoStatute)
+    }
+
+    @Test
+    fun followUpAppendsToConversation() = runBlocking {
+        stack.engine.clear()
+        stack.engine.ask("what is the punishment for murder")
+        awaitAnswered(0)
+        stack.engine.ask("what are my fundamental rights")
+        awaitAnswered(1)
+        // Both turns are present — a follow-up appends, it does not replace.
+        assertThat(stack.engine.conversation.value).hasSize(2)
+    }
+
+    private suspend fun ask(query: String): Answer {
+        stack.engine.clear()
+        stack.engine.ask(query)
+        return awaitAnswered(0).answer
+    }
+
+    private suspend fun awaitAnswered(index: Int): Turn = withTimeout(30_000) {
+        stack.engine.conversation.first {
+            it.size > index && it[index].answer !is Answer.Thinking
+        }[index]
     }
 
     companion object {

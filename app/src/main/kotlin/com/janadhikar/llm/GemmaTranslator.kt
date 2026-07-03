@@ -84,11 +84,11 @@ class GemmaTranslator(
         const val MODEL_ASSET = "models/gemma3-1b-it-int4.task"
         const val MODEL_ID = "Gemma 3 1B (4-bit, LiteRT)"
 
-        /** Directive budget is ~25 words; 96 tokens is generous headroom. */
-        private const val MAX_TOKENS = 96
+        /** 2–4 explanatory sentences; 256 tokens is comfortable headroom. */
+        private const val MAX_TOKENS = 256
         private const val TOP_K = 40
 
-        /** Zero-latency promise: past this we show verbatim text instead. */
-        private const val INFERENCE_TIMEOUT_MS = 4_000L
+        /** Past this we show verbatim text instead (explanation is longer now). */
+        private const val INFERENCE_TIMEOUT_MS = 12_000L
     }
 }

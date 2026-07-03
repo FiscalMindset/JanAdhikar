@@ -60,7 +60,7 @@ class IncidentPipelineService : Service() {
     override fun onDestroy() {
         // Belt-and-braces: never leave the mic pipeline running without its
         // foreground service.
-        (application as JanadhikarApp).edgeStack?.engine?.cancel()
+        (application as JanadhikarApp).edgeStack?.engine?.cancelVoice()
         super.onDestroy()
     }
 

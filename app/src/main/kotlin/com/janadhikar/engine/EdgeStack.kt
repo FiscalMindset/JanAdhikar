@@ -37,7 +37,7 @@ import java.io.File
  * first use — a typed query never waits for them.
  */
 class EdgeStack private constructor(
-    val engine: IncidentEngine,
+    val engine: ChatEngine,
     /** Live status of each on-device component, for the status row. */
     val status: StateFlow<Status>,
     private val closeables: List<Closeable>,
@@ -60,7 +60,7 @@ class EdgeStack private constructor(
     )
 
     override fun close() {
-        engine.cancel()
+        engine.cancelVoice()
         closeables.forEach(Closeable::close)
         lazyCloseables.forEach { deferred ->
             if (deferred.isCompleted) runCatching { deferred.getCompleted() }.getOrNull()?.close()
@@ -137,7 +137,7 @@ class EdgeStack private constructor(
             // this mutex — concurrent native decode is the classic whisper.cpp
             // SIGSEGV.
             val whisperMutex = Mutex()
-            val engine = IncidentEngine(
+            val engine = ChatEngine(
                 scope = scope,
                 audioSource = { AudioCapture().stream() },
                 transcriber = { pcm ->

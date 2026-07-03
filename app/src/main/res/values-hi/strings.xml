@@ -16,6 +16,14 @@
     <string name="status_voice">आवाज़</string>
     <string name="engine_assets_missing">ऑफ़लाइन इंजन शुरू नहीं हो सका — इस बिल्ड में मॉडल या ज्ञान फ़ाइलें मौजूद नहीं हैं।</string>
     <string name="mic_button">बोलें</string>
+    <string name="chat_tagline">अपने अधिकारों और भारतीय कानून के बारे में अपने शब्दों में कुछ भी पूछें — 100% ऑफ़लाइन।</string>
+    <string name="ask_anything">अपने अधिकारों के बारे में पूछें…</string>
+    <string name="thinking">सोच रहा है…</string>
+    <string name="copied">कॉपी किया गया</string>
+    <string name="copy">कॉपी</string>
+    <string name="example_1">मेरे मौलिक अधिकार क्या हैं?</string>
+    <string name="example_2">पुलिस ने मुझे बिना कारण थप्पड़ मारा</string>
+    <string name="example_3">चोरी की सज़ा क्या है?</string>
 
     <!-- Active -->
     <string name="active_listening">सुन रहा है…</string>

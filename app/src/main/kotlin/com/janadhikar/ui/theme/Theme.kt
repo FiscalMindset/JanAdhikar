@@ -34,6 +34,9 @@ object Palette {
 
     val DangerRed = Color(0xFFFF1744)
     val DimGray = Color(0xFFB3B3B3) // 7.4:1 on black — minimum for hint text
+
+    /** User's chat bubble. */
+    val ChatUser = Color(0xFF1E2A38)
 }
 
 private val Scheme = darkColorScheme(

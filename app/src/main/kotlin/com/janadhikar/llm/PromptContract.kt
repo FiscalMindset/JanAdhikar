@@ -37,19 +37,21 @@ object PromptContract {
     fun build(verbatim: VerbatimStatuteText, output: AppLanguage): String {
         val instruction = when (output) {
             AppLanguage.ENGLISH ->
-                "Rewrite the LEGAL TEXT below as ONE short, simple instruction in plain English " +
-                    "telling a citizen what they can do or demand right now. " +
-                    "Use only information present in the LEGAL TEXT. " +
+                "You are explaining a law to an ordinary citizen with a class-5 reading level. " +
+                    "Read the LEGAL TEXT below and explain it in simple, everyday words. " +
+                    "Write 2 to 4 short sentences: first what it means for the person, then a " +
+                    "one-line summary of their right or the offence. " +
+                    "Use ONLY information present in the LEGAL TEXT. " +
                     "Do NOT mention or invent any section number, act name, page number, or citation. " +
-                    "Do NOT add advice, warnings, or facts that are not in the LEGAL TEXT. " +
-                    "Maximum 25 words. Output only the instruction."
+                    "Do NOT add advice or facts that are not in the LEGAL TEXT."
             AppLanguage.HINDI ->
-                "नीचे दिए गए LEGAL TEXT को सरल हिंदी में एक छोटे निर्देश के रूप में लिखें — " +
-                    "नागरिक अभी क्या कर सकता है या क्या माँग सकता है। " +
+                "आप एक आम नागरिक को कानून समझा रहे हैं जिसकी पढ़ाई कक्षा 5 तक है। " +
+                    "नीचे दिए गए LEGAL TEXT को बहुत सरल, रोज़मर्रा के शब्दों में समझाएँ। " +
+                    "2 से 4 छोटे वाक्य लिखें: पहले इसका व्यक्ति के लिए क्या मतलब है, फिर एक पंक्ति में " +
+                    "उसके अधिकार या अपराध का सारांश। " +
                     "केवल LEGAL TEXT में मौजूद जानकारी का उपयोग करें। " +
                     "कोई धारा संख्या, अधिनियम का नाम, पृष्ठ संख्या या उद्धरण न लिखें, न बनाएँ। " +
-                    "LEGAL TEXT से बाहर की कोई सलाह या तथ्य न जोड़ें। " +
-                    "अधिकतम 25 शब्द। केवल निर्देश लिखें।"
+                    "LEGAL TEXT से बाहर कोई सलाह या तथ्य न जोड़ें।"
         }
         return buildString {
             append("<start_of_turn>user\n")
