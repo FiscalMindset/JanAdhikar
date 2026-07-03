@@ -13,6 +13,19 @@
          network permission in (see :app verifyNoInternetPermission task).
          ═══════════════════════════════════════════════════════════════════ -->
 
+    <!-- ACTIVE REMOVAL: MediaPipe's tasks-genai transitively ships Google's
+         datatransport telemetry, which declares both network permissions.
+         tools:node="remove" strips them from the merged manifest, so the OS
+         itself denies the process ALL network I/O — kernel-enforced, stronger
+         than trusting library code not to phone home. The
+         verifyNoInternetPermission task then proves the removal worked. -->
+    <uses-permission
+        android:name="android.permission.INTERNET"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
+
     <!-- Voice input path (whisper.cpp). Requested at runtime, only on first
          mic use. Typed-text input works without granting this. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />

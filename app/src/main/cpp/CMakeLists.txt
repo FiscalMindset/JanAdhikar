@@ -30,8 +30,26 @@ target_link_libraries(janadhikar_whisper
     android
     log
 )
+# Android 15+ requires 16 KB page-size-aligned LOAD segments.
+target_link_options(janadhikar_whisper PRIVATE "-Wl,-z,max-page-size=16384")
 
 # ── 2. SQLite + sqlite-vec, statically fused ─────────────────────────────
+# sqlite-vec.h is generated from sqlite-vec.h.tmpl (upstream does this in its
+# Makefile via envsubst). We reproduce it here with configure_file so a fresh
+# submodule checkout always builds.
+file(READ ${EXTERNAL_DIR}/sqlite-vec/VERSION SQLITE_VEC_VERSION_RAW)
+string(STRIP "${SQLITE_VEC_VERSION_RAW}" VERSION)
+string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" _ "${VERSION}")
+set(VERSION_MAJOR ${CMAKE_MATCH_1})
+set(VERSION_MINOR ${CMAKE_MATCH_2})
+set(VERSION_PATCH ${CMAKE_MATCH_3})
+set(DATE "vendored-build")
+set(SOURCE "git-submodule")
+configure_file(
+    ${EXTERNAL_DIR}/sqlite-vec/sqlite-vec.h.tmpl
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/sqlite-vec.h
+)
+
 # We compile our OWN sqlite3 (not the Android system one) so that:
 #   a) sqlite-vec can be statically linked — no runtime extension loading,
 #      which is blocked/fragile on Android;
@@ -42,6 +60,7 @@ add_library(janadhikar_sqlitevec SHARED
     ${EXTERNAL_DIR}/sqlite-vec/sqlite-vec.c
 )
 target_include_directories(janadhikar_sqlitevec PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
     ${EXTERNAL_DIR}/sqlite-amalgamation
     ${EXTERNAL_DIR}/sqlite-vec
 )
@@ -58,6 +77,7 @@ target_link_libraries(janadhikar_sqlitevec
     android
     log
 )
+target_link_options(janadhikar_sqlitevec PRIVATE "-Wl,-z,max-page-size=16384")
 
 # ═════════════════════════════════════════════════════════════════════════
 # One-time submodule setup:

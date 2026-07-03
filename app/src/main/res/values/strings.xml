@@ -11,6 +11,7 @@
     <string name="trigger_type_hint">Or type your situation…</string>
     <string name="trigger_submit">Find my rights</string>
     <string name="warming_up">Preparing offline engine…</string>
+    <string name="engine_assets_missing">Offline engine could not start — model or knowledge files are missing from this build.</string>
     <string name="mic_button">Speak</string>
 
     <!-- Active -->

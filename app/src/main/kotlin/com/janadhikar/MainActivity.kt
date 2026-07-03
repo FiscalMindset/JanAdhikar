@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             JanadhikarRoot(
                 edgeStackFlow = app.edgeStackFlow,
+                warmupError = app.warmupError,
                 sos = sos,
                 onVoiceRequested = ::requestVoice,
             )

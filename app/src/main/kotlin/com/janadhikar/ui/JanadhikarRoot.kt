@@ -1,9 +1,7 @@
 package com.janadhikar.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -26,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 @Composable
 fun JanadhikarRoot(
     edgeStackFlow: StateFlow<EdgeStack?>,
+    warmupError: StateFlow<String?>,
     sos: SosController,
     onVoiceRequested: () -> Unit,
 ) {
@@ -35,7 +34,15 @@ fun JanadhikarRoot(
             val stack = edgeStack
 
             if (stack == null) {
-                TriggerScreen(engineReady = false, onStartVoice = {}, onSubmitText = {})
+                val error by warmupError.collectAsState()
+                TriggerScreen(
+                    engineReady = false,
+                    onStartVoice = {},
+                    onSubmitText = {},
+                    statusMessage = error?.let {
+                        stringResource(R.string.engine_assets_missing) + "\n" + it
+                    },
+                )
                 return@Surface
             }
 
@@ -78,11 +85,7 @@ fun JanadhikarRoot(
                         engineReady = true,
                         onStartVoice = onVoiceRequested,
                         onSubmitText = stack.engine::submitTypedQuery,
-                    )
-                    Text(
-                        text = stringResource(R.string.mic_error),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Palette.DangerRed,
+                        statusMessage = stringResource(R.string.mic_error),
                     )
                 }
             }

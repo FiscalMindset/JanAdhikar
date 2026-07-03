@@ -44,6 +44,8 @@ fun TriggerScreen(
     onStartVoice: () -> Unit,
     onSubmitText: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** Red status line (warm-up failure, mic error). Never LLM/DB content. */
+    statusMessage: String? = null,
 ) {
     var typed by remember { mutableStateOf("") }
 
@@ -92,6 +94,16 @@ fun TriggerScreen(
             color = Palette.DimGray,
             textAlign = TextAlign.Center,
         )
+        statusMessage?.let {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Palette.DangerRed,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.testTag("status_message"),
+            )
+        }
         Spacer(Modifier.height(20.dp))
 
         // ── Equal-citizen text path ──

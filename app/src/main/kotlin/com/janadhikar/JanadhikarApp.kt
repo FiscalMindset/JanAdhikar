@@ -1,6 +1,7 @@
 package com.janadhikar
 
 import android.app.Application
+import android.util.Log
 import com.janadhikar.engine.EdgeStack
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,12 +25,28 @@ class JanadhikarApp : Application() {
     /** Null until warm-up completes; the Trigger screen observes readiness. */
     val edgeStackFlow: StateFlow<EdgeStack?> = _edgeStackFlow.asStateFlow()
 
+    private val _warmupError = MutableStateFlow<String?>(null)
+
+    /** Non-null when the edge stack could not start (e.g. model assets missing). */
+    val warmupError: StateFlow<String?> = _warmupError.asStateFlow()
+
     val edgeStack: EdgeStack? get() = _edgeStackFlow.value
 
     override fun onCreate() {
         super.onCreate()
         appScope.launch {
-            _edgeStackFlow.value = EdgeStack.create(this@JanadhikarApp)
+            try {
+                _edgeStackFlow.value = EdgeStack.create(this@JanadhikarApp)
+            } catch (t: Throwable) {
+                // A broken/incomplete install must present as "engine won't
+                // start", never as a crash loop.
+                Log.e(TAG, "Edge stack failed to start", t)
+                _warmupError.value = t.message ?: t.javaClass.simpleName
+            }
         }
+    }
+
+    companion object {
+        private const val TAG = "JanadhikarApp"
     }
 }

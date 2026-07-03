@@ -10,6 +10,7 @@
     <string name="trigger_type_hint">या अपनी स्थिति लिखें…</string>
     <string name="trigger_submit">मेरे अधिकार खोजें</string>
     <string name="warming_up">ऑफ़लाइन इंजन तैयार हो रहा है…</string>
+    <string name="engine_assets_missing">ऑफ़लाइन इंजन शुरू नहीं हो सका — इस बिल्ड में मॉडल या ज्ञान फ़ाइलें मौजूद नहीं हैं।</string>
     <string name="mic_button">बोलें</string>
 
     <!-- Active -->
