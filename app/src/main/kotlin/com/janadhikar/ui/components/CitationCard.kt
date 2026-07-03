@@ -112,33 +112,32 @@ fun CitationCard(
         ReceiptRow(stringResource(R.string.source_label), citation.sourceDocument, small = true)
         ReceiptRow(stringResource(R.string.compiled_label), citation.compilationDate, small = true)
 
-        // Official source link — opens the India Code page in a browser so the
-        // citizen can verify the exact text themselves. The app itself makes no
-        // network call; launching a URL is the user's own action.
+        // Look-up link, built PER PROVISION (not the generic act page) so it
+        // lands on THIS section/article. The app makes no network call —
+        // launching the browser is the user's own action.
         val context = LocalContext.current
-        if (citation.sourceUrl.isNotBlank()) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "🔗 " + stringResource(R.string.open_source),
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                ),
-                color = Color(0xFF0B57D0),
-                modifier = Modifier
-                    .clickable {
-                        runCatching {
-                            context.startActivity(
-                                android.content.Intent(
-                                    android.content.Intent.ACTION_VIEW,
-                                    android.net.Uri.parse(citation.sourceUrl),
-                                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "🔗 " + stringResource(R.string.open_source) + " ($unitLabel ${citation.sectionNumber})",
+            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
+            color = Color(0xFF0B57D0),
+            modifier = Modifier
+                .clickable {
+                    val q = android.net.Uri.encode(
+                        "${citation.statuteName} $unitLabel ${citation.sectionNumber} bare act India",
+                    )
+                    runCatching {
+                        context.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse("https://www.google.com/search?q=$q"),
+                            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
                     }
-                    .padding(vertical = 6.dp)
-                    .testTag("source_link"),
-            )
-        }
+                }
+                .padding(vertical = 6.dp)
+                .testTag("source_link"),
+        )
     }
 }
 

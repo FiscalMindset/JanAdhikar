@@ -40,9 +40,9 @@ class HybridRetriever(
     suspend fun retrieve(normalizedQuery: String): RetrievalResult {
         // ── 0. CONCEPT — broad questions ("fundamental rights") map directly
         //    to the authoritative provisions; similarity search can't. ─────────
-        val conceptRefs = ConceptLexicon.resolve(normalizedQuery)
-        if (conceptRefs.isNotEmpty()) {
-            val citations = conceptRefs.mapNotNull { ref ->
+        val concept = ConceptLexicon.resolve(normalizedQuery)
+        if (concept != null) {
+            val citations = concept.refs.mapNotNull { ref ->
                 dao.chunkByStatuteAndSection(ref.statuteContains, ref.number)
                     ?.let { (MetadataExtractor.extract(it) as? MetadataExtractor.Extraction.Valid)?.citation }
             }
@@ -52,6 +52,7 @@ class HybridRetriever(
                     confidence = CONCEPT_CONFIDENCE,
                     related = citations.drop(1),
                     redirectedFromSuperseded = false,
+                    curatedAnswer = concept.overview,
                 )
             }
         }

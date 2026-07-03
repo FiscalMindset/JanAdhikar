@@ -36,6 +36,12 @@ sealed interface RetrievalResult {
         val related: List<VerifiedCitation>,
         /** True if the graph redirected a superseded section to its successor. */
         val redirectedFromSuperseded: Boolean,
+        /**
+         * For a broad concept question ("fundamental rights"): an authoritative
+         * OVERVIEW shown as the answer directly (the actual legal structure, not
+         * model output), instead of the LLM explaining a single provision.
+         */
+        val curatedAnswer: String? = null,
     ) : RetrievalResult
 
     /**

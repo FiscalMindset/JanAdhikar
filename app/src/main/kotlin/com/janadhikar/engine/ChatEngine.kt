@@ -85,9 +85,6 @@ class ChatEngine(
                     is RetrievalResult.Match -> {
                         val language = preferredLanguage() ?: query.language
                         val citations = listOf(result.primary) + result.related
-                        // Show the citations IMMEDIATELY (the section + its text),
-                        // then stream the explanation into the bubble.
-                        val partial = StringBuilder()
                         fun grounded(directive: Directive, streaming: Boolean) = Answer.Grounded(
                             explanation = directive,
                             citations = citations,
@@ -95,14 +92,26 @@ class ChatEngine(
                             redirectedFromSuperseded = result.redirectedFromSuperseded,
                             streaming = streaming,
                         )
-                        updateTurn(id) { it.copy(answer = grounded(Directive("", language, false), true)) }
-                        val explanation = translate(result.primary, language) { delta ->
-                            partial.append(delta)
-                            updateTurn(id) {
-                                it.copy(answer = grounded(Directive(partial.toString(), language, false), true))
+                        if (result.curatedAnswer != null) {
+                            // Broad concept question — show the authoritative
+                            // overview directly (complete, instant, no LLM).
+                            grounded(
+                                Directive(result.curatedAnswer, language, isVerbatimFallback = false,
+                                    modelId = "Janadhikar (curated)"),
+                                streaming = false,
+                            )
+                        } else {
+                            // Show citations immediately, then stream the explanation.
+                            val partial = StringBuilder()
+                            updateTurn(id) { it.copy(answer = grounded(Directive("", language, false), true)) }
+                            val explanation = translate(result.primary, language) { delta ->
+                                partial.append(delta)
+                                updateTurn(id) {
+                                    it.copy(answer = grounded(Directive(partial.toString(), language, false), true))
+                                }
                             }
+                            grounded(explanation, streaming = false)
                         }
-                        grounded(explanation, streaming = false)
                     }
                 }
             } catch (e: CancellationException) {
