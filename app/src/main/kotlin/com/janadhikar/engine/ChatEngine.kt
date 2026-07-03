@@ -35,12 +35,14 @@ class ChatEngine(
     private val translate: suspend (VerifiedCitation, AppLanguage, (String) -> Unit) -> Directive,
     private val clock: () -> Long,
     private val preferredLanguage: () -> AppLanguage? = { null },
+    private val store: ConversationStore = NoopConversationStore,
 ) {
 
     fun interface AudioSource { fun stream(): Flow<FloatArray> }
     fun interface Transcriber { suspend fun transcribe(pcm16k: FloatArray): String }
 
-    private val _conversation = MutableStateFlow<List<Turn>>(emptyList())
+    // Restore the saved conversation so it survives app restarts.
+    private val _conversation = MutableStateFlow<List<Turn>>(store.load())
     val conversation: StateFlow<List<Turn>> = _conversation.asStateFlow()
 
     private val _capture = MutableStateFlow<CaptureState>(CaptureState.Idle)
@@ -58,7 +60,7 @@ class ChatEngine(
     private val _usageLog = MutableStateFlow<List<UsageEntry>>(emptyList())
     val usageLog: StateFlow<List<UsageEntry>> = _usageLog.asStateFlow()
 
-    private var nextId = 0L
+    private var nextId = (_conversation.value.maxOfOrNull { it.id } ?: -1L) + 1L
     private var captureJob: Job? = null
     private var pcmWindow = FloatArray(0)
     private var startedAt = 0L
@@ -121,6 +123,7 @@ class ChatEngine(
             }
             updateTurn(id) { it.copy(answer = answer) }
             logUsage(query.text, answer, clock() - startedAt)
+            store.save(_conversation.value) // persist once the answer is final
         }
     }
 
@@ -142,6 +145,7 @@ class ChatEngine(
 
     fun clear() {
         _conversation.value = emptyList()
+        store.save(emptyList())
     }
 
     // ── Voice capture overlay ────────────────────────────────────────────────

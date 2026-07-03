@@ -124,6 +124,9 @@ fun CitationCard(
                 color = Color(0xFF0B57D0),
                 modifier = Modifier
                     .clickable {
+                        // Standard PDF page anchor. Honoured by compliant inline
+                        // viewers; the page number is also shown on the card as
+                        // a fallback for viewers that ignore the fragment.
                         runCatching {
                             context.startActivity(
                                 android.content.Intent(
