@@ -7,12 +7,16 @@ import com.janadhikar.memory.model.VerifiedCitation
 import com.janadhikar.memory.vec.SqliteVecBridge
 
 /**
- * The hybrid memory walk (COGNEE.md §5):
+ * The hybrid memory walk — KEYWORD + SEMANTIC, then graph + relational:
  *
- *   1. VECTOR      — KNN over sqlite-vec chunk embeddings
- *   2. CONFIDENCE  — governed gate; below threshold → NoVerifiedStatute. Hard stop.
- *   3. GRAPH       — Cognee-derived edges: supersession redirect + related rights
- *   4. RELATIONAL  — typed rows through the strict MetadataExtractor
+ *   1. KEYWORD  — CrisisLexicon maps colloquial crisis words ("killed",
+ *                 "slapped") to legal terms and FTS5 finds the sections.
+ *                 This is what makes it more than a semantic guess.
+ *   2. VECTOR   — KNN over sqlite-vec, for queries already in legal-ish phrasing.
+ *   3. MERGE    — keyword hits lead (intent-matched); vector hits above the
+ *                 governed threshold follow. Refuse only if BOTH are empty.
+ *   4. GRAPH    — supersession redirect + related provisions.
+ *   5. RELATIONAL — typed rows through the strict MetadataExtractor.
  *
  * Interfaces are injected so the walk is unit-testable without a device.
  */
@@ -20,6 +24,7 @@ class HybridRetriever(
     private val dao: KnowledgeDao,
     private val vectorIndex: VectorSearch,
     private val embed: (String) -> FloatArray,
+    private val keywordIndex: KeywordSearch = KeywordSearch { _, _ -> emptyList() },
 ) {
 
     /** Seam over [SqliteVecBridge] for tests. */
@@ -27,27 +32,39 @@ class HybridRetriever(
         fun search(queryEmbedding: FloatArray, k: Int): List<SqliteVecBridge.Neighbor>
     }
 
+    /** FTS5 keyword seam over [SqliteVecBridge] for tests. */
+    fun interface KeywordSearch {
+        fun search(ftsQuery: String, k: Int): List<Long>
+    }
+
     suspend fun retrieve(normalizedQuery: String): RetrievalResult {
-        // ── 1. VECTOR ────────────────────────────────────────────────────────
+        // ── 1. KEYWORD (crisis-word → legal-term) ────────────────────────────
+        val ftsQuery = CrisisLexicon.toFtsQuery(normalizedQuery)
+        val keywordIds = if (ftsQuery.isNotBlank()) keywordIndex.search(ftsQuery, K_NEIGHBORS) else emptyList()
+
+        // ── 2. VECTOR ────────────────────────────────────────────────────────
         val neighbors = vectorIndex.search(embed(normalizedQuery), K_NEIGHBORS)
-        if (neighbors.isEmpty()) return RetrievalResult.NoVerifiedStatute
+        val bestSim = neighbors.firstOrNull()?.let { 1f - it.distance } ?: 0f
+        val vectorIds = neighbors.filter { 1f - it.distance >= CONFIDENCE_THRESHOLD }.map { it.chunkId }
 
-        // ── 2. CONFIDENCE GATE (Rule 3) ─────────────────────────────────────
-        // cosine similarity = 1 - cosine distance. The threshold is a GOVERNED
-        // constant: changing it requires an eval run (CONTRIBUTING.md Rule 6).
-        val best = neighbors.first()
-        val confidence = 1f - best.distance
-        if (confidence < CONFIDENCE_THRESHOLD) return RetrievalResult.NoVerifiedStatute
+        // ── 3. MERGE — keyword first, then above-threshold vector; dedup ─────
+        val orderedIds = LinkedHashSet<Long>().apply {
+            addAll(keywordIds)
+            addAll(vectorIds)
+        }.toList()
+        // Rule 3: nothing matched by keyword OR confident vector → refuse.
+        if (orderedIds.isEmpty()) return RetrievalResult.NoVerifiedStatute
 
-        val candidateIds = neighbors
-            .filter { 1f - it.distance >= CONFIDENCE_THRESHOLD }
-            .map { it.chunkId }
-        val chunksById = dao.chunksByIds(candidateIds).associateBy { it.id }
-        // Preserve similarity order — the DB returns rows unordered.
-        val orderedChunks = candidateIds.mapNotNull { chunksById[it] }
+        val chunksById = dao.chunksByIds(orderedIds).associateBy { it.id }
+        val orderedChunks = orderedIds.mapNotNull { chunksById[it] }
         if (orderedChunks.isEmpty()) return RetrievalResult.NoVerifiedStatute
 
-        // ── 3. GRAPH: supersession redirect ─────────────────────────────────
+        // A keyword hit means the user's crisis word mapped to a legal term that
+        // actually appears in a section — high confidence even if the raw
+        // embedding similarity was low.
+        val confidence = if (keywordIds.isNotEmpty()) maxOf(bestSim, KEYWORD_CONFIDENCE) else bestSim
+
+        // ── 4. GRAPH: supersession redirect ─────────────────────────────────
         var redirected = false
         var primary: VerifiedCitation? = null
         for (chunk in orderedChunks) {
@@ -60,7 +77,7 @@ class HybridRetriever(
             }
             // Rejected row → try the next candidate; never repair (Rule 2).
         }
-        // ── 4. RELATIONAL: strict extraction already applied above ──────────
+        // ── 5. RELATIONAL: strict extraction already applied above ──────────
         if (primary == null) return RetrievalResult.NoVerifiedStatute
 
         return RetrievalResult.Match(
@@ -156,6 +173,9 @@ class HybridRetriever(
          * genuine hit. The margin is deliberately biased toward refusal.
          */
         const val CONFIDENCE_THRESHOLD = 0.38f
+
+        /** Confidence assigned when a keyword (crisis-lexicon) hit is present. */
+        const val KEYWORD_CONFIDENCE = 0.75f
 
         const val K_NEIGHBORS = 8
         private const val MAX_RELATED = 4

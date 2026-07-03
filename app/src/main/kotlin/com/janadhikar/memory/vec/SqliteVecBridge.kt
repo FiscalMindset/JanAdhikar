@@ -31,6 +31,21 @@ class SqliteVecBridge private constructor(private var dbPtr: Long) : Closeable {
         return (0 until found).map { Neighbor(ids[it], distances[it]) }
     }
 
+    /**
+     * FTS5 keyword search over the statute text. [ftsMatchQuery] is an FTS5
+     * MATCH expression built from the [com.janadhikar.memory.CrisisLexicon]
+     * (controlled legal terms only). Returns chunk ids ranked by relevance
+     * (title-weighted), best first.
+     */
+    fun keywordSearch(ftsMatchQuery: String, k: Int): List<Long> {
+        check(dbPtr != 0L) { "SqliteVecBridge used after close()" }
+        if (ftsMatchQuery.isBlank()) return emptyList()
+        val ids = LongArray(k)
+        val found = nativeKeywordSearch(dbPtr, ftsMatchQuery, k, ids)
+        if (found <= 0) return emptyList()
+        return ids.take(found)
+    }
+
     override fun close() {
         if (dbPtr != 0L) {
             nativeClose(dbPtr)
@@ -48,6 +63,13 @@ class SqliteVecBridge private constructor(private var dbPtr: Long) : Closeable {
         k: Int,
         outIds: LongArray,
         outDistances: FloatArray,
+    ): Int
+
+    private external fun nativeKeywordSearch(
+        dbPtr: Long,
+        matchQuery: String,
+        k: Int,
+        outIds: LongArray,
     ): Int
 
     companion object {

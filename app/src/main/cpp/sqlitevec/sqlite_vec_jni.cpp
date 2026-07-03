@@ -90,4 +90,40 @@ Java_com_janadhikar_memory_vec_SqliteVecBridge_nativeVectorSearch(
     return found;
 }
 
+// FTS5 keyword search over chunk_fts. matchQuery is an FTS5 MATCH expression
+// built by the Kotlin CrisisLexicon (controlled legal terms — no raw user
+// text). Title is weighted 10x so the marginal note dominates ranking.
+// Fills outIds (caller-allocated, length k), returns the count, or -1 on error.
+JNIEXPORT jint JNICALL
+Java_com_janadhikar_memory_vec_SqliteVecBridge_nativeKeywordSearch(
+        JNIEnv *env, jobject /*thiz*/, jlong db_ptr,
+        jstring match_query, jint k, jlongArray out_ids) {
+    auto *db = reinterpret_cast<sqlite3 *>(db_ptr);
+    if (db == nullptr || k <= 0) return -1;
+
+    static const char *SQL =
+            "SELECT rowid FROM chunk_fts WHERE chunk_fts MATCH ?1 "
+            "ORDER BY bm25(chunk_fts, 10.0, 1.0) LIMIT ?2";
+
+    sqlite3_stmt *stmt = nullptr;
+    if (sqlite3_prepare_v2(db, SQL, -1, &stmt, nullptr) != SQLITE_OK) {
+        LOGE("fts prepare failed: %s", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    const char *q = env->GetStringUTFChars(match_query, nullptr);
+    sqlite3_bind_text(stmt, 1, q, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 2, k);
+    env->ReleaseStringUTFChars(match_query, q);
+
+    jlong *ids = env->GetLongArrayElements(out_ids, nullptr);
+    int found = 0;
+    while (found < k && sqlite3_step(stmt) == SQLITE_ROW) {
+        ids[found++] = sqlite3_column_int64(stmt, 0);
+    }
+    sqlite3_finalize(stmt);
+    env->ReleaseLongArrayElements(out_ids, ids, 0);
+    return found;
+}
+
 } // extern "C"

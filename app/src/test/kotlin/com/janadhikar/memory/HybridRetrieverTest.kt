@@ -62,6 +62,48 @@ class HybridRetrieverTest {
             .isEqualTo(RetrievalResult.NoVerifiedStatute)
     }
 
+    // ── Hybrid keyword path (crisis language pure-semantic search misses) ────
+
+    @Test
+    fun `keyword hit surfaces a match even when vector similarity is low`() = runTest {
+        // "someone killed my brother" embeds far from the Murder section, so the
+        // vector path alone would REFUSE (sim below threshold). The crisis
+        // lexicon maps "killed" → murder and the keyword index finds it.
+        val murder = chunk(1L, 10L, section = "103")
+        val weakVector = HybridRetriever.VectorSearch { _, _ ->
+            listOf(SqliteVecBridge.Neighbor(chunkId = 2L, distance = 0.8f)) // 0.2 < threshold
+        }
+        val keyword = HybridRetriever.KeywordSearch { _, _ -> listOf(1L) } // murder chunk
+        val retriever = HybridRetriever(
+            FakeDao(chunks = listOf(murder)),
+            weakVector,
+            zeroEmbedding,
+            keyword,
+        )
+
+        val result = retriever.retrieve("someone killed my brother")
+
+        val match = result as RetrievalResult.Match
+        assertThat(match.primary.sectionNumber).isEqualTo("103")
+        assertThat(match.confidence).isAtLeast(HybridRetriever.KEYWORD_CONFIDENCE)
+    }
+
+    @Test
+    fun `no keyword and weak vector still refuses`() = runTest {
+        val weakVector = HybridRetriever.VectorSearch { _, _ ->
+            listOf(SqliteVecBridge.Neighbor(chunkId = 1L, distance = 0.8f))
+        }
+        val noKeyword = HybridRetriever.KeywordSearch { _, _ -> emptyList() }
+        val retriever = HybridRetriever(
+            FakeDao(chunks = listOf(chunk(1L, 10L))),
+            weakVector,
+            zeroEmbedding,
+            noKeyword,
+        )
+        assertThat(retriever.retrieve("something totally unrelated"))
+            .isEqualTo(RetrievalResult.NoVerifiedStatute)
+    }
+
     // ── The happy path ───────────────────────────────────────────────────────
 
     @Test

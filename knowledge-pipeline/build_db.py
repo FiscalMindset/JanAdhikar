@@ -184,6 +184,26 @@ def main() -> None:
         ),
     )
 
+    # ── FTS5 keyword index (title + body), for the hybrid retriever ──────────
+    # Pure semantic search misses colloquial crisis language ("killed",
+    # "slapped") that does not resemble formal statute text. The on-device
+    # CrisisLexicon maps such words to legal terms ("murder", "assault") and
+    # this index finds the matching sections. Title is weighted heavily at
+    # query time so the marginal note (e.g. "Murder", "Theft") dominates.
+    conn.execute("CREATE VIRTUAL TABLE chunk_fts USING fts5(title, body)")
+
+    def _split_title(text: str) -> tuple[str, str]:
+        head, marker, body = text.partition(".—")
+        return (head.strip(), body.strip()) if marker and len(head) < 200 else ("", text)
+
+    conn.executemany(
+        "INSERT INTO chunk_fts(rowid, title, body) VALUES (?, ?, ?)",
+        (
+            (row["id"], *_split_title(row["chunk_text_en"]))
+            for row in chunks_rows
+        ),
+    )
+
     meta = {
         "schema_version": str(room["version"]),
         "embedder_model_id": EMBEDDER_MODEL_ID,

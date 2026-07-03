@@ -67,6 +67,7 @@ target_include_directories(janadhikar_sqlitevec PRIVATE
 target_compile_definitions(janadhikar_sqlitevec PRIVATE
     # Read-only, single-connection knowledge base → trim SQLite to the bone.
     SQLITE_ENABLE_STAT4
+    SQLITE_ENABLE_FTS5             # keyword index for the hybrid retriever
     SQLITE_OMIT_LOAD_EXTENSION      # extensions are statically linked, not loaded
     SQLITE_DQS=0
     SQLITE_THREADSAFE=1

@@ -129,6 +129,7 @@ class EdgeStack private constructor(
                 dao = db.dao(),
                 vectorIndex = { query, k -> vec.search(query, k) },
                 embed = embedder::embed,
+                keywordIndex = { ftsQuery, k -> vec.keywordSearch(ftsQuery, k) },
             )
 
             // whisper_context is NOT thread-safe. The engine's streaming decode
