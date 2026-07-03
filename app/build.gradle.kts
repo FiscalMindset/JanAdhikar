@@ -31,12 +31,14 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags += listOf("-std=c++17", "-O3", "-fvisibility=hidden")
-                // NOTE: do NOT force -march=armv8.2-a+dotprod/i8mm here. ggml
-                // detects CPU features at RUNTIME and picks dotprod kernels only
-                // if present. Forcing them at compile time SIGILLs on budget CPUs
-                // (Cortex-A53/A55 without asimddp), which this device has.
                 arguments += listOf(
                     "-DGGML_NATIVE=OFF",
+                    // Compile the arm64 dot-product kernels (ARMv8.2 asimddp) —
+                    // the key speedup for Q4 llama.cpp/whisper. Phones that lack
+                    // dotprod would SIGILL on these, so the app checks the CPU at
+                    // runtime (CpuFeatures.hasDotProd) and only uses the native
+                    // llama/whisper path on capable devices; others use Gemma.
+                    "-DGGML_CPU_ARM_ARCH=armv8.2-a+dotprod",
                     "-DWHISPER_BUILD_TESTS=OFF",
                     "-DWHISPER_BUILD_EXAMPLES=OFF",
                 )

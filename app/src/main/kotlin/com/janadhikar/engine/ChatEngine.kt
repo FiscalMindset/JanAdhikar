@@ -322,19 +322,16 @@ class ChatEngine(
         startedAt = clock()
         pcmWindow = FloatArray(0)
         _capture.value = CaptureState.Recording("", 0L)
-        captureJob = scope.launch {
-            var lastDecode = 0
-            var live = ""
+        // Capture on IO so the mic loop is NEVER starved by LLM generation (which
+        // runs on Default). We do NOT transcribe mid-recording — that blocked the
+        // loop and froze the timer at ~2s; the transcript is produced once on stop.
+        captureJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 audioSource.stream().collect { chunk ->
                     pcmWindow += chunk
                     if (elapsed() >= MAX_CAPTURE_MILLIS) { stopVoice(); return@collect }
-                    if (pcmWindow.size - lastDecode >= LIVE_DECODE_SAMPLES) {
-                        lastDecode = pcmWindow.size
-                        live = transcriber.transcribe(pcmWindow.copyOf()).ifBlank { live }
-                    }
                     if (_capture.value is CaptureState.Recording) {
-                        _capture.value = CaptureState.Recording(live, elapsed())
+                        _capture.value = CaptureState.Recording("🎙 recording…", elapsed())
                     }
                 }
             } catch (e: CancellationException) {

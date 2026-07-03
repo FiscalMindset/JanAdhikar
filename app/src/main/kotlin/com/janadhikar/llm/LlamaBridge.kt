@@ -46,7 +46,9 @@ class LlamaBridge private constructor(private var handle: Long) : Closeable {
 
         /** Loads the model; returns null if it fails (caller falls back). */
         fun open(modelFile: File): LlamaBridge? {
-            val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
+            // On phone big.LITTLE, using ALL cores (incl. slow A55s) hurts —
+            // llama.cpp is fastest on just the big cores. Cap at 4.
+            val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
             val stub = LlamaBridge(0L)
             val h = stub.nativeLoad(modelFile.absolutePath, N_CTX, threads)
             return if (h != 0L) LlamaBridge(h) else null

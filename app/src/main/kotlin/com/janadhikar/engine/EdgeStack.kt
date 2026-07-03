@@ -132,6 +132,9 @@ class EdgeStack private constructor(
             // before whisper is ready (null = ready / not downloading).
             val voiceProgress = MutableStateFlow<Int?>(null)
             val whisperDeferred: Deferred<WhisperBridge?> = scope.async {
+                // whisper.cpp shares ggml's dot-product kernels — skip on CPUs
+                // that would SIGILL (voice simply stays unavailable there).
+                if (!CpuFeatures.hasDotProd) return@async null
                 runCatching {
                     val ext = context.getExternalFilesDir("models")
                     val f = ext?.let { File(it, "ggml-small-q5_1.bin") }
@@ -161,7 +164,9 @@ class EdgeStack private constructor(
             // the download % via [modelProgress]; a query waits only for the model.
             val modelProgress = MutableStateFlow<Int?>(null)
             val llamaDeferred: Deferred<LlamaTranslator?> = scope.async {
-                if (useGemma) return@async null
+                // llama.cpp uses the dot-product kernels — only on capable CPUs.
+                // On others we fall back to Gemma (if pushed) or verbatim law.
+                if (useGemma || !CpuFeatures.hasDotProd) return@async null
                 val f = provisionQwen(context, small = choice == ModelPreference.Choice.QWEN_SMALL) { pct ->
                     modelProgress.value = pct
                 }
@@ -205,11 +210,12 @@ class EdgeStack private constructor(
                 scope = scope,
                 audioSource = { AudioCapture().stream() },
                 transcriber = { pcm ->
-                    // First voice use awaits the background whisper load.
+                    // First voice use awaits the background whisper load. Runs on
+                    // IO (not Default) so it doesn't queue behind LLM generation.
                     when (val whisper = whisperDeferred.await()) {
                         null -> ""
                         else -> whisperMutex.withLock {
-                            withContext(Dispatchers.Default) {
+                            withContext(Dispatchers.IO) {
                                 whisper.transcribe(pcm, WhisperBridge.Lang.AUTO)
                             }
                         }
