@@ -170,6 +170,8 @@ class HybridRetrieverTest {
         override suspend fun chunkByNodeId(nodeId: Long) = chunks.firstOrNull { it.nodeId == nodeId }
         override suspend fun chunkByStatuteAndSection(statuteContains: String, number: String) =
             chunks.firstOrNull { it.statuteName.contains(statuteContains) && it.sectionNumber == number }
+        override suspend fun chunksByNumber(number: String, unit: String) =
+            chunks.filter { it.sectionNumber == number && it.unit == unit }.distinctBy { it.statuteName }
         override suspend fun nodeById(id: Long): GraphNodeEntity? = null
         override suspend fun edgesFrom(nodeId: Long, relation: String) =
             edges.filter { it.srcNodeId == nodeId && it.relation == relation }.sortedByDescending { it.weight }

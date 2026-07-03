@@ -36,6 +36,7 @@ class ChatEngine(
     private val clock: () -> Long,
     private val preferredLanguage: () -> AppLanguage? = { null },
     private val store: ConversationStore = NoopConversationStore,
+    private val archive: SessionArchive = NoopSessionArchive,
 ) {
 
     fun interface AudioSource { fun stream(): Flow<FloatArray> }
@@ -60,7 +61,12 @@ class ChatEngine(
     private val _usageLog = MutableStateFlow<List<UsageEntry>>(emptyList())
     val usageLog: StateFlow<List<UsageEntry>> = _usageLog.asStateFlow()
 
+    /** Past conversations, newest first — the History screen. */
+    private val _sessions = MutableStateFlow(archive.list())
+    val sessions: StateFlow<List<Session>> = _sessions.asStateFlow()
+
     private var nextId = (_conversation.value.maxOfOrNull { it.id } ?: -1L) + 1L
+    private var sessionSeq = (_sessions.value.maxOfOrNull { it.id } ?: 0L) + 1L
     private var captureJob: Job? = null
     private var pcmWindow = FloatArray(0)
     private var startedAt = 0L
@@ -143,9 +149,34 @@ class ChatEngine(
         _usageLog.value = (listOf(entry) + _usageLog.value).take(MAX_USAGE_LOG)
     }
 
+    /** New chat: archive the current conversation to history, then start fresh. */
     fun clear() {
+        archiveCurrent()
         _conversation.value = emptyList()
         store.save(emptyList())
+    }
+
+    /** Reopen a past conversation (archiving whatever is current first). */
+    fun openSession(session: Session) {
+        archiveCurrent()
+        archive.delete(session.id)
+        _conversation.value = session.turns
+        store.save(session.turns)
+        nextId = (session.turns.maxOfOrNull { it.id } ?: -1L) + 1L
+        _sessions.value = archive.list()
+    }
+
+    fun deleteSession(session: Session) {
+        archive.delete(session.id)
+        _sessions.value = archive.list()
+    }
+
+    private fun archiveCurrent() {
+        val turns = _conversation.value
+        if (turns.any { it.answer !is Answer.Thinking }) {
+            archive.add(sessionSeq++, turns)
+            _sessions.value = archive.list()
+        }
     }
 
     // ── Voice capture overlay ────────────────────────────────────────────────

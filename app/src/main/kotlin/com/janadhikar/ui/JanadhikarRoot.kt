@@ -54,7 +54,19 @@ fun JanadhikarRoot(
                 val turns by stack.engine.conversation.collectAsState()
                 val capture by stack.engine.capture.collectAsState()
                 var showSettings by remember { mutableStateOf(false) }
+                var showHistory by remember { mutableStateOf(false) }
                 var pdfView by remember { mutableStateOf<PdfTarget?>(null) }
+
+                if (showHistory) {
+                    val sessions by stack.engine.sessions.collectAsState()
+                    HistoryScreen(
+                        sessions = sessions,
+                        onOpen = { stack.engine.openSession(it); showHistory = false },
+                        onDelete = stack.engine::deleteSession,
+                        onBack = { showHistory = false },
+                    )
+                    return@Box
+                }
 
                 if (showSettings) {
                     val status by stack.status.collectAsState()
@@ -84,6 +96,7 @@ fun JanadhikarRoot(
                     onMic = onVoiceRequested,
                     onSettings = { showSettings = true },
                     onNewChat = stack.engine::clear,
+                    onHistory = { showHistory = true },
                     onOpenPdf = { statute, page ->
                         pdfAssetFor(statute)?.let { pdfView = PdfTarget(it, page, statute) }
                     },

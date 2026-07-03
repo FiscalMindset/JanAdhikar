@@ -33,6 +33,13 @@ interface KnowledgeDao {
     )
     suspend fun chunkByStatuteAndSection(statuteContains: String, number: String): StatuteChunkEntity?
 
+    /** All acts' provisions with this exact number + unit (direct "article N"/"section N"). */
+    @Query(
+        "SELECT * FROM statute_chunks WHERE section_number = :number AND unit = :unit " +
+            "GROUP BY statute_name ORDER BY id",
+    )
+    suspend fun chunksByNumber(number: String, unit: String): List<StatuteChunkEntity>
+
     // ── Graph: Cognee-derived nodes and edges ───────────────────────────────
 
     @Query("SELECT * FROM graph_nodes WHERE id = :id")

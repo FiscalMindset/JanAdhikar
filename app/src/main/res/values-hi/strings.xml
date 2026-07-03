@@ -21,6 +21,10 @@
     <string name="thinking">सोच रहा है…</string>
     <string name="writing">उत्तर लिखा जा रहा है…</string>
     <string name="based_on">इन सत्यापित प्रावधानों पर आधारित</string>
+    <string name="history">इतिहास</string>
+    <string name="history_empty">अभी तक कोई पुरानी बातचीत नहीं। आपकी चैट यहाँ दिखेंगी।</string>
+    <string name="messages">संदेश</string>
+    <string name="answered_count">उत्तरित</string>
     <string name="open_source">आधिकारिक स्रोत खोलें</string>
     <string name="copied">कॉपी किया गया</string>
     <string name="copy">कॉपी</string>

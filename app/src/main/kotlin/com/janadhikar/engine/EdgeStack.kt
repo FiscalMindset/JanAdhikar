@@ -186,6 +186,7 @@ class EdgeStack private constructor(
                 },
                 clock = System::currentTimeMillis,
                 store = FileConversationStore(File(context.filesDir, "conversation.json")),
+                archive = FileSessionArchive(File(context.filesDir, "sessions.json")),
             )
 
             EdgeStack(

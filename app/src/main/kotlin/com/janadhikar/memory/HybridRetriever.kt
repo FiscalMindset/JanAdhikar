@@ -38,7 +38,26 @@ class HybridRetriever(
     }
 
     suspend fun retrieve(normalizedQuery: String): RetrievalResult {
-        // ── 0. CONCEPT — broad questions ("fundamental rights") map directly
+        // ── 0a. DIRECT REFERENCE — "article 15", "section 302", "BNS 63" name an
+        //    exact provision; look it up instead of guessing by similarity. ─────
+        DirectReference.parse(normalizedQuery)?.let { ref ->
+            val all = dao.chunksByNumber(ref.number, ref.unit)
+                .mapNotNull { (MetadataExtractor.extract(it) as? MetadataExtractor.Extraction.Valid)?.citation }
+            if (all.isNotEmpty()) {
+                val preferred = ref.statuteHint
+                    ?: if (ref.unit == "ARTICLE") "Constitution" else "Nyaya"
+                val primary = all.firstOrNull { it.statuteName.contains(preferred, ignoreCase = true) }
+                    ?: all.first()
+                return RetrievalResult.Match(
+                    primary = primary,
+                    confidence = DIRECT_CONFIDENCE,
+                    related = all.filter { it != primary },
+                    redirectedFromSuperseded = false,
+                )
+            }
+        }
+
+        // ── 0b. CONCEPT — broad questions ("fundamental rights") map directly
         //    to the authoritative provisions; similarity search can't. ─────────
         val concept = ConceptLexicon.resolve(normalizedQuery)
         if (concept != null) {
@@ -205,6 +224,9 @@ class HybridRetriever(
 
         /** Concept-lexicon matches are authoritative, curated provisions. */
         const val CONCEPT_CONFIDENCE = 0.95f
+
+        /** A direct "article N"/"section N" lookup is an exact hit. */
+        const val DIRECT_CONFIDENCE = 1.0f
 
         const val K_NEIGHBORS = 8
         private const val MAX_RELATED = 4

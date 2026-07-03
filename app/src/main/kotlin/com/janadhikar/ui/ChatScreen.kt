@@ -76,6 +76,7 @@ fun ChatScreen(
     warmupFailed: Boolean = false,
     onSettings: () -> Unit = {},
     onNewChat: () -> Unit = {},
+    onHistory: () -> Unit = {},
     onOpenPdf: (statuteName: String, page: Int) -> Unit = { _, _ -> },
 ) {
     val listState = rememberLazyListState()
@@ -84,7 +85,7 @@ fun ChatScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        TopBar(onNewChat = onNewChat, onSettings = onSettings, showNewChat = turns.isNotEmpty())
+        TopBar(onNewChat = onNewChat, onSettings = onSettings, onHistory = onHistory, showNewChat = turns.isNotEmpty())
         if (turns.isEmpty()) {
             EmptyState(engineReady, warmupStage, warmupFailed, onExample = onAsk, modifier = Modifier.weight(1f))
         } else {
@@ -102,7 +103,7 @@ fun ChatScreen(
 }
 
 @Composable
-private fun TopBar(onNewChat: () -> Unit, onSettings: () -> Unit, showNewChat: Boolean) {
+private fun TopBar(onNewChat: () -> Unit, onSettings: () -> Unit, onHistory: () -> Unit, showNewChat: Boolean) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -120,8 +121,14 @@ private fun TopBar(onNewChat: () -> Unit, onSettings: () -> Unit, showNewChat: B
                 color = Palette.DirectiveYellow,
                 modifier = Modifier.clickable(onClick = onNewChat).testTag("new_chat").padding(6.dp),
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(10.dp))
         }
+        Text(
+            text = "🕘",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.clickable(onClick = onHistory).testTag("history_button").padding(6.dp),
+        )
+        Spacer(Modifier.width(8.dp))
         Text(
             text = "⚙",
             style = MaterialTheme.typography.titleLarge,
@@ -257,10 +264,16 @@ private fun GroundedAnswer(a: Answer.Grounded, onOpenPdf: (String, Int) -> Unit 
         }
         if (!a.streaming && a.explanation.text.isNotBlank()) {
             Spacer(Modifier.size(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CopyChip(stringResource(R.string.copy)) {
-                    clipboard.setText(AnnotatedString(a.explanation.text))
-                    android.widget.Toast.makeText(context, copiedMsg, android.widget.Toast.LENGTH_SHORT).show()
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                var copied by remember(a.explanation.text) { mutableStateOf(false) }
+                LaunchedEffect(copied) { if (copied) { kotlinx.coroutines.delay(1500); copied = false } }
+                CopyChip(if (copied) "✓ " + stringResource(R.string.copied) else stringResource(R.string.copy)) {
+                    // Copy via the platform clipboard directly (reliable across ROMs),
+                    // with clear in-UI feedback since some ROMs suppress toasts.
+                    val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                        as android.content.ClipboardManager
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("Janadhikar", a.explanation.text))
+                    copied = true
                 }
                 MetaChip(a)
             }
@@ -288,17 +301,34 @@ private fun GroundedAnswer(a: Answer.Grounded, onOpenPdf: (String, Int) -> Unit 
     }
 }
 
-/** Full metadata: model, section, confidence, time, tokens, language. */
+/** Full metadata: engine (+ what it means), section, confidence, time, source. */
 @Composable
 private fun MetaBlock(a: Answer.Grounded) {
     val primary = a.citations.firstOrNull()
+    val engine = a.explanation.modelId
+    // Plain-English note on WHERE the answer came from and how trustworthy.
+    val engineNote = when {
+        engine.contains("curated") ->
+            "Hand-verified answer written from the law itself — not AI-generated."
+        a.explanation.isVerbatimFallback ->
+            "The exact words of the law, shown directly (no AI rephrasing)."
+        engine.contains("Gemma") ->
+            "Plain-language explanation by the on-device AI, grounded only in the cited law."
+        else -> null
+    }
     val rows = buildList {
-        add("Answer engine" to a.explanation.modelId)
+        add("Answer engine" to engine)
+        engineNote?.let { add("What this means" to it) }
         primary?.let {
             val unit = if (it.unit == "ARTICLE") "Article" else "Section"
-            add("Primary provision" to "${it.statuteName.substringBefore(",")} · $unit ${it.sectionNumber} · p.${it.pageNumber}")
+            add("Primary provision" to "$unit ${it.sectionNumber} — ${it.statuteName.substringBefore(",")}")
+            add("Page in source" to "p.${it.pageNumber} of ${it.sourceDocument}")
+            it.clause?.let { cl -> add("Clause" to cl) }
         }
-        add("Provisions cited" to a.citations.size.toString())
+        add("Provisions cited" to a.citations.joinToString(", ") {
+            (if (it.unit == "ARTICLE") "Art. " else "S. ") + it.sectionNumber
+        })
+        add("Grounding" to "100% offline · verified statute database")
         add("Match confidence" to "%.0f%%".format(a.confidence * 100))
         if (a.explanation.generationMillis > 0) add("Generation time" to "${a.explanation.generationMillis} ms")
         if (a.explanation.approxTokens > 0) add("Approx. tokens" to a.explanation.approxTokens.toString())
