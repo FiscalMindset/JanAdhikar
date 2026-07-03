@@ -43,6 +43,9 @@ class ChatEngine(
         { c, l, _, d -> translate(c, l, d) },
     /** A self-describing summary of the knowledge base ("how many articles"). */
     private val corpusStats: suspend () -> String? = { null },
+    /** Synthesise one answer from several provisions' real text (concepts). */
+    private val synthesize: suspend (List<VerifiedCitation>, AppLanguage, (String) -> Unit) -> Directive? =
+        { _, _, _ -> null },
     private val clock: () -> Long,
     private val preferredLanguage: () -> AppLanguage? = { null },
     private val store: ConversationStore = NoopConversationStore,
@@ -139,10 +142,21 @@ class ChatEngine(
                             streaming = streaming,
                         )
                         if (result.curatedAnswer != null) {
-                            // Broad concept question — show the authoritative
-                            // overview directly (complete, instant, no LLM).
+                            // Broad concept question — synthesise a rich answer
+                            // from the REAL text of all the cited provisions
+                            // (grounded), streaming it. If the model is slow/
+                            // unavailable, fall back to the curated overview so
+                            // the user always gets a complete, accurate answer.
+                            val partial = StringBuilder()
+                            updateTurn(id) { it.copy(answer = grounded(Directive("", language, false), true)) }
+                            val synth = synthesize(citations, language) { delta ->
+                                partial.append(delta)
+                                updateTurn(id) {
+                                    it.copy(answer = grounded(Directive(partial.toString(), language, false), true))
+                                }
+                            }
                             grounded(
-                                Directive(result.curatedAnswer, language, isVerbatimFallback = false,
+                                synth ?: Directive(result.curatedAnswer, language, isVerbatimFallback = false,
                                     modelId = "Janadhikar (curated)"),
                                 streaming = false,
                             )

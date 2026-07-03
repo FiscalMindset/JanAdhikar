@@ -73,17 +73,18 @@ class PromptContractTest {
         // each take VerbatimStatuteText as the ONLY free-text field; AppLanguage
         // and Style are closed types. No public builder may take a raw String —
         // that would be an uncontrolled injection point (Rule 1).
+        // Every PUBLIC prompt builder must take VerbatimStatuteText (the sole
+        // grounded injection point) and NO raw String — Style/AppLanguage are
+        // closed types. Covers Gemma/Qwen prompts and the multi-provision
+        // synthesis builders.
         val publicBuilders = PromptContract::class.declaredFunctions
             .filter { it.visibility == kotlin.reflect.KVisibility.PUBLIC }
-        assertThat(publicBuilders.map { it.name })
-            .containsExactly("build", "buildChatML")
+        assertThat(publicBuilders.map { it.name }).containsExactly(
+            "build", "buildChatML", "buildSynthesis", "buildSynthesisChatML",
+        )
         publicBuilders.forEach { fn ->
             val types = fn.parameters.drop(1).map { it.type.toString() }
-            assertThat(types).containsExactly(
-                "com.janadhikar.llm.VerbatimStatuteText",
-                "com.janadhikar.input.AppLanguage",
-                "com.janadhikar.llm.PromptContract.Style",
-            )
+            assertThat(types).contains("com.janadhikar.llm.VerbatimStatuteText")
             assertThat(types.count { it.contains("kotlin.String") }).isEqualTo(0)
         }
     }

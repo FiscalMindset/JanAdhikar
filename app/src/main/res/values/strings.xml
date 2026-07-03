@@ -22,6 +22,7 @@
     <string name="thinking">Thinking…</string>
     <string name="writing">Writing the answer…</string>
     <string name="based_on">Based on these verified provisions</string>
+    <string name="sources">Sources &amp; verified record</string>
     <string name="history">History</string>
     <string name="history_empty">No past conversations yet. Your chats will appear here.</string>
     <string name="messages">messages</string>

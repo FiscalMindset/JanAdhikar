@@ -19,6 +19,19 @@ value class VerbatimStatuteText private constructor(val value: String) {
                     AppLanguage.HINDI -> citation.verbatimTextHi
                 },
             )
+
+        /**
+         * Concatenated verbatim text of SEVERAL provisions — still 100% from the
+         * database (each is a [VerifiedCitation]), for synthesising a broad
+         * answer (e.g. all Fundamental Rights) from the REAL law, not a canned
+         * summary. Capped so the model's context isn't overrun.
+         */
+        fun combined(citations: List<VerifiedCitation>, language: AppLanguage, maxChars: Int = 4000): VerbatimStatuteText {
+            val text = citations.joinToString("\n\n") { c ->
+                if (language == AppLanguage.HINDI) c.verbatimTextHi else c.verbatimTextEn
+            }
+            return VerbatimStatuteText(if (text.length > maxChars) text.take(maxChars) else text)
+        }
     }
 }
 
@@ -69,6 +82,28 @@ object PromptContract {
             append(verbatim.value) // ← the single injection point
             append("\n\"\"\"<|im_end|>\n<|im_start|>assistant\n")
         }
+
+    private fun synthesisInstruction(output: AppLanguage): String = when (output) {
+        AppLanguage.ENGLISH ->
+            "You are explaining a group of related Indian constitutional/legal provisions to an " +
+                "ordinary citizen. Read ALL the LEGAL TEXT below and write ONE clear, well-organised " +
+                "answer that covers each right/rule in it — a short intro, then a simple line for each, " +
+                "in plain everyday words. Be accurate and complete but easy to read." + RULES_EN
+        AppLanguage.HINDI ->
+            "आप कई संबंधित संवैधानिक/कानूनी प्रावधानों को एक आम नागरिक को समझा रहे हैं। नीचे दिए गए सभी " +
+                "कानून पढ़ें और एक स्पष्ट, व्यवस्थित उत्तर लिखें जो हर अधिकार/नियम को सरल रोज़मर्रा की हिंदी में " +
+                "कवर करे — पहले एक छोटा परिचय, फिर हर एक के लिए एक सरल पंक्ति।" + RULES_HI
+    }
+
+    /** Gemma-format synthesis over MANY provisions (all from the DB). */
+    fun buildSynthesis(combined: VerbatimStatuteText, output: AppLanguage): String =
+        "<start_of_turn>user\n${synthesisInstruction(output)}\n\nLEGAL TEXT:\n\"\"\"\n" +
+            "${combined.value}\n\"\"\"<end_of_turn>\n<start_of_turn>model\n"
+
+    /** Qwen ChatML synthesis over MANY provisions. */
+    fun buildSynthesisChatML(combined: VerbatimStatuteText, output: AppLanguage): String =
+        "<|im_start|>system\n${synthesisInstruction(output)}<|im_end|>\n<|im_start|>user\nLEGAL TEXT:\n\"\"\"\n" +
+            "${combined.value}\n\"\"\"<|im_end|>\n<|im_start|>assistant\n"
 
     private fun instruction(output: AppLanguage, style: Style): String {
         return when (output) {

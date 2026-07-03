@@ -120,6 +120,33 @@ class GemmaTranslator(
         }
     }
 
+    /** Synthesise ONE answer from several provisions' real verbatim text (concepts). */
+    suspend fun synthesize(
+        citations: List<VerifiedCitation>,
+        output: AppLanguage,
+        onDelta: (String) -> Unit,
+    ): Directive? {
+        if (citations.isEmpty()) return null
+        val combined = VerbatimStatuteText.combined(citations, output)
+        val prompt = PromptContract.buildSynthesis(combined, output)
+        val startedAt = System.currentTimeMillis()
+        val full = StringBuilder()
+        val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) {
+            genMutex.withLock {
+                suspendCancellableCoroutine<String> { cont ->
+                    llm.generateResponseAsync(prompt) { partial, done ->
+                        full.append(partial); onDelta(partial)
+                        if (done && cont.isActive) cont.resume(full.toString()) {}
+                    }
+                }
+            }
+        }
+        val elapsed = System.currentTimeMillis() - startedAt
+        return (raw?.let(OutputSanitizer::inspect) as? OutputSanitizer.Verdict.Clean)?.let {
+            Directive(it.text, output, isVerbatimFallback = false, modelId = modelLabel, generationMillis = elapsed)
+        }
+    }
+
     /**
      * Plain-language meaning of a word/phrase the user selected (e.g. "criminal
      * force", "hefty"). This is a dictionary helper — a general definition, not

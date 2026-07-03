@@ -48,6 +48,23 @@ class LlamaTranslator private constructor(private val llama: LlamaBridge) : Clos
         }
     }
 
+    suspend fun synthesize(
+        citations: List<VerifiedCitation>,
+        output: AppLanguage,
+        onDelta: (String) -> Unit,
+    ): Directive? {
+        if (citations.isEmpty()) return null
+        val combined = VerbatimStatuteText.combined(citations, output)
+        val prompt = PromptContract.buildSynthesisChatML(combined, output)
+        val startedAt = System.currentTimeMillis()
+        val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) { llama.generate(prompt, 260) }
+        val elapsed = System.currentTimeMillis() - startedAt
+        return (raw?.let(OutputSanitizer::inspect) as? OutputSanitizer.Verdict.Clean)?.let {
+            onDelta(it.text)
+            Directive(it.text, output, isVerbatimFallback = false, modelId = modelLabel, generationMillis = elapsed)
+        }
+    }
+
     suspend fun define(phrase: String, output: AppLanguage, onDelta: (String) -> Unit): Directive {
         val lang = if (output == AppLanguage.HINDI) "आसान हिंदी" else "simple English"
         val clean = phrase.trim().take(120).replace("\"", "")

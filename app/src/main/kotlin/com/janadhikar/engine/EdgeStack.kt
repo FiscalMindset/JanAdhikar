@@ -209,6 +209,10 @@ class EdgeStack private constructor(
                         ?: Directive(VerbatimStatuteText.from(citation, language).value, language, true)
                 },
                 corpusStats = { CorpusSummary.build(db.dao().provisionCounts()) },
+                synthesize = { citations, language, onDelta ->
+                    llamaDeferred.await()?.synthesize(citations, language, onDelta)
+                        ?: gemmaDeferred.await()?.synthesize(citations, language, onDelta)
+                },
                 clock = System::currentTimeMillis,
                 store = FileConversationStore(File(context.filesDir, "conversation.json")),
                 archive = FileSessionArchive(File(context.filesDir, "sessions.json")),

@@ -273,22 +273,37 @@ private fun GroundedAnswer(a: Answer.Grounded, onOpenPdf: (String, Int) -> Unit 
             Spacer(Modifier.size(6.dp))
             Text("↻ " + stringResource(R.string.superseded_redirect), style = MaterialTheme.typography.bodyMedium, color = Palette.TickerGreen)
         }
-        // Citations come AFTER the answer, and only once it is complete — the
-        // "verified record" should support the answer, not precede it. A
-        // plain-meaning answer (word lookup) has no citations — skip the block.
+        // The verified record is HIDDEN by default so the answer reads clean
+        // like a real chatbot. A small "source" chip reveals the citations +
+        // full metadata on tap. (A plain-meaning word lookup has no citations.)
         if (!a.streaming && a.citations.isNotEmpty()) {
-            Spacer(Modifier.size(12.dp))
-            Text(
-                text = stringResource(R.string.based_on).uppercase(),
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 11.sp, letterSpacing = 1.sp),
-                color = Palette.DimGray,
-            )
-            Spacer(Modifier.size(6.dp))
-            a.citations.forEach { citation ->
-                CitationCard(citation = citation, language = a.explanation.language, onOpenPdf = onOpenPdf)
-                Spacer(Modifier.size(8.dp))
+            var showSources by remember(a) { mutableStateOf(false) }
+            Spacer(Modifier.size(10.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clickable { showSources = !showSources }
+                    .background(Palette.NearBlack, RoundedCornerShape(8.dp))
+                    .border(1.dp, Palette.ChatAssistantEdge, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                    .testTag("sources_toggle"),
+            ) {
+                Text(
+                    text = "📄 " + stringResource(R.string.sources) + " (${a.citations.size})",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
+                    color = Palette.Answered,
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(if (showSources) "▲" else "▼", style = MaterialTheme.typography.bodyMedium.copy(fontSize = 11.sp), color = Palette.DimGray)
             }
-            MetaBlock(a)
+            if (showSources) {
+                Spacer(Modifier.size(8.dp))
+                a.citations.forEach { citation ->
+                    CitationCard(citation = citation, language = a.explanation.language, onOpenPdf = onOpenPdf)
+                    Spacer(Modifier.size(8.dp))
+                }
+                MetaBlock(a)
+            }
         }
     }
 }
