@@ -5,6 +5,7 @@ import com.janadhikar.llm.Directive
 import com.janadhikar.llm.GemmaTranslator
 import com.janadhikar.llm.LlamaBridge
 import com.janadhikar.llm.LlamaTranslator
+import com.janadhikar.llm.ModelDownloader
 import com.janadhikar.llm.VerbatimStatuteText
 import com.janadhikar.memory.HybridRetriever
 import com.janadhikar.memory.KnowledgeBaseProvisioner
@@ -128,15 +129,17 @@ class EdgeStack private constructor(
                     WhisperBridge.open(provisionAsset(context, WHISPER_MODEL_ASSET))
                 }.getOrNull()
             }
-            // Answer model. Prefer Qwen 2.5 1.5B (llama.cpp) if its GGUF was
-            // pushed — a much stronger multilingual model (usable Hindi), and
-            // ungated. Else fall back to Gemma (license-gated); else verbatim.
-            val qwenFile = provisionQwenOrNull(context)
+            // Answer model. Default: Qwen 2.5 1.5B (llama.cpp) — stronger
+            // multilingual (usable Hindi) AND ungated, so it can be auto-
+            // DOWNLOADED on first run (a link-shared APK has no adb). If the user
+            // picked Gemma (and pushed its gated .task) we use that instead.
+            val useGemma = ModelPreference.isGemma(context) && provisionGemmaOrNull(context) != null
+            val qwenFile = if (useGemma) null else provisionQwen(context, onProgress)
             val llamaDeferred: Deferred<LlamaTranslator?> = scope.async {
                 qwenFile?.let { runCatching { LlamaTranslator.open(it)?.also { t -> t.warmUp() } }.getOrNull() }
             }
             val gemmaDeferred: Deferred<GemmaTranslator?> = scope.async {
-                if (qwenFile != null) null else runCatching {
+                if (!useGemma) null else runCatching {
                     GemmaTranslator(context, provisionGemma(context)).also { it.warmUp() }
                 }.getOrNull()
             }
@@ -218,17 +221,29 @@ class EdgeStack private constructor(
          * (much better answers, but slower); otherwise the default 1B.
          */
         /**
-         * The pushed Qwen GGUF, but ONLY if the user opted in with a marker file
-         * (models/use_qwen.flag). Qwen 2.5 1.5B is more accurate (esp. Hindi) but
-         * runs on the CPU via llama.cpp — fast on phones with dot-product support,
-         * but slow (~minutes) on budget CPUs that lack it. So Gemma (MediaPipe,
-         * hardware-accelerated) stays the DEFAULT; Qwen is a deliberate opt-in.
+         * The Qwen GGUF — present if pushed, else downloaded once from the public
+         * (ungated) HF URL with progress reported to the warm-up screen. Returns
+         * null only if the download fails (caller falls back to Gemma/verbatim).
          */
-        private fun provisionQwenOrNull(context: Context): File? {
+        private suspend fun provisionQwen(context: Context, onProgress: (String) -> Unit): File? {
             val ext = context.getExternalFilesDir("models") ?: return null
-            if (!File(ext, "use_qwen.flag").exists()) return null
-            val f = File(ext, LlamaBridge.MODEL_ASSET.substringAfterLast('/'))
-            return if (f.exists() && f.length() > 0) f else null
+            val target = File(ext, LlamaBridge.MODEL_ASSET.substringAfterLast('/'))
+            if (target.exists() && target.length() > 0) return target
+            onProgress("Downloading AI model (one-time)…")
+            return ModelDownloader.ensure(ModelDownloader.QWEN_URL, target) { p ->
+                val mb = { b: Long -> b / (1024 * 1024) }
+                onProgress("Downloading AI model… ${p.percent}%  (${mb(p.downloadedBytes)}/${mb(p.totalBytes)} MB)")
+            }
+        }
+
+        private fun provisionGemmaOrNull(context: Context): File? {
+            context.getExternalFilesDir("models")?.let { ext ->
+                val f = File(ext, GemmaTranslator.MODEL_ASSET.substringAfterLast('/'))
+                if (f.exists() && f.length() > 0) return f
+                ext.listFiles()?.firstOrNull { it.name.contains("4b", true) && it.extension == "task" }
+                    ?.let { return it }
+            }
+            return runCatching { provisionGemma(context) }.getOrNull()
         }
 
         private fun provisionGemma(context: Context): File {

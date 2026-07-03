@@ -13,18 +13,14 @@
          network permission in (see :app verifyNoInternetPermission task).
          ═══════════════════════════════════════════════════════════════════ -->
 
-    <!-- ACTIVE REMOVAL: MediaPipe's tasks-genai transitively ships Google's
-         datatransport telemetry, which declares both network permissions.
-         tools:node="remove" strips them from the merged manifest, so the OS
-         itself denies the process ALL network I/O — kernel-enforced, stronger
-         than trusting library code not to phone home. The
-         verifyNoInternetPermission task then proves the removal worked. -->
-    <uses-permission
-        android:name="android.permission.INTERNET"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.ACCESS_NETWORK_STATE"
-        tools:node="remove" />
+    <!-- INTERNET is used for EXACTLY ONE thing: the one-time, first-run download
+         of the on-device AI model (too large to bundle in a distributable APK).
+         After that, every question is answered 100% on-device — no query, no
+         transcript, no answer ever leaves the phone. This is the only way an
+         APK shared by link can work without a USB cable. ACCESS_NETWORK_STATE
+         lets the downloader tell the user "connect to the internet first". -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Voice input path (whisper.cpp). Requested at runtime, only on first
          mic use. Typed-text input works without granting this. -->

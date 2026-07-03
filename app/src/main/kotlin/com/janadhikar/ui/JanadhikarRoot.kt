@@ -71,10 +71,14 @@ fun JanadhikarRoot(
                 if (showSettings) {
                     val status by stack.status.collectAsState()
                     val usage by stack.engine.usageLog.collectAsState()
+                    val ctx = androidx.compose.ui.platform.LocalContext.current
+                    var model by remember { mutableStateOf(com.janadhikar.engine.ModelPreference.get(ctx)) }
                     SettingsScreen(
                         models = status.models(),
                         usage = usage,
                         onBack = { showSettings = false },
+                        currentModel = model,
+                        onSelectModel = { com.janadhikar.engine.ModelPreference.set(ctx, it); model = it },
                     )
                     return@Box
                 }

@@ -38,6 +38,9 @@ fun SettingsScreen(
     usage: List<ChatEngine.UsageEntry>,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    currentModel: com.janadhikar.engine.ModelPreference.Choice =
+        com.janadhikar.engine.ModelPreference.Choice.QWEN,
+    onSelectModel: (com.janadhikar.engine.ModelPreference.Choice) -> Unit = {},
 ) {
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -58,6 +61,25 @@ fun SettingsScreen(
 
         LazyColumn(modifier = Modifier.fillMaxWidth()) {
             item {
+                SectionLabel("Answer model")
+                ModelChoiceRow(
+                    title = "Qwen 2.5 1.5B  ·  best for Hindi",
+                    subtitle = "Downloads once (~1 GB). Strong multilingual. Slower on old phones.",
+                    selected = currentModel == com.janadhikar.engine.ModelPreference.Choice.QWEN,
+                    onClick = { onSelectModel(com.janadhikar.engine.ModelPreference.Choice.QWEN) },
+                )
+                ModelChoiceRow(
+                    title = "Gemma 3 (1B / 4B)  ·  faster",
+                    subtitle = "Hardware-accelerated, quicker on low-end CPUs. Needs the .task file.",
+                    selected = currentModel == com.janadhikar.engine.ModelPreference.Choice.GEMMA,
+                    onClick = { onSelectModel(com.janadhikar.engine.ModelPreference.Choice.GEMMA) },
+                )
+                Text(
+                    "Switching takes effect when you reopen the app.",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 11.sp),
+                    color = Palette.DimGray,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
+                )
                 SectionLabel(stringResource(R.string.models_on_device))
             }
             items(models) { m -> ModelRow(m) }
@@ -75,6 +97,29 @@ fun SettingsScreen(
                 }
             }
             items(usage) { e -> UsageRow(e) }
+        }
+    }
+}
+
+@Composable
+private fun ModelChoiceRow(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = if (selected) "◉" else "○",
+            style = MaterialTheme.typography.titleLarge,
+            color = if (selected) Palette.TickerGreen else Palette.DimGray,
+            modifier = Modifier.padding(end = 12.dp),
+        )
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = Palette.White)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 11.sp), color = Palette.DimGray)
         }
     }
 }
