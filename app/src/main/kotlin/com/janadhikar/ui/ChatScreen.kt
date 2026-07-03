@@ -77,6 +77,7 @@ fun ChatScreen(
     onSettings: () -> Unit = {},
     onNewChat: () -> Unit = {},
     onHistory: () -> Unit = {},
+    onOverview: () -> Unit = {},
     onOpenPdf: (statuteName: String, page: Int) -> Unit = { _, _ -> },
 ) {
     val listState = rememberLazyListState()
@@ -85,7 +86,7 @@ fun ChatScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        TopBar(onNewChat = onNewChat, onSettings = onSettings, onHistory = onHistory, showNewChat = turns.isNotEmpty())
+        TopBar(onNewChat = onNewChat, onSettings = onSettings, onHistory = onHistory, onOverview = onOverview, showNewChat = turns.isNotEmpty())
         if (turns.isEmpty()) {
             EmptyState(engineReady, warmupStage, warmupFailed, onExample = onAsk, modifier = Modifier.weight(1f))
         } else {
@@ -103,7 +104,7 @@ fun ChatScreen(
 }
 
 @Composable
-private fun TopBar(onNewChat: () -> Unit, onSettings: () -> Unit, onHistory: () -> Unit, showNewChat: Boolean) {
+private fun TopBar(onNewChat: () -> Unit, onSettings: () -> Unit, onHistory: () -> Unit, onOverview: () -> Unit, showNewChat: Boolean) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -116,13 +117,19 @@ private fun TopBar(onNewChat: () -> Unit, onSettings: () -> Unit, onHistory: () 
         Spacer(Modifier.weight(1f))
         if (showNewChat) {
             Text(
-                text = "✎ " + stringResource(R.string.new_chat),
-                style = MaterialTheme.typography.bodyMedium,
+                text = "✎",
+                style = MaterialTheme.typography.titleLarge,
                 color = Palette.DirectiveYellow,
                 modifier = Modifier.clickable(onClick = onNewChat).testTag("new_chat").padding(6.dp),
             )
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(8.dp))
         }
+        Text(
+            text = "📖",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.clickable(onClick = onOverview).testTag("overview_button").padding(6.dp),
+        )
+        Spacer(Modifier.width(8.dp))
         Text(
             text = "🕘",
             style = MaterialTheme.typography.titleLarge,

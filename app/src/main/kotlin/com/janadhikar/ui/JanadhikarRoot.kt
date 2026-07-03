@@ -55,7 +55,13 @@ fun JanadhikarRoot(
                 val capture by stack.engine.capture.collectAsState()
                 var showSettings by remember { mutableStateOf(false) }
                 var showHistory by remember { mutableStateOf(false) }
+                var showOverview by remember { mutableStateOf(false) }
                 var pdfView by remember { mutableStateOf<PdfTarget?>(null) }
+
+                if (showOverview) {
+                    ConstitutionOverviewScreen(onBack = { showOverview = false })
+                    return@Box
+                }
 
                 if (showHistory) {
                     val sessions by stack.engine.sessions.collectAsState()
@@ -102,6 +108,7 @@ fun JanadhikarRoot(
                         onSettings = { showSettings = true },
                         onNewChat = stack.engine::clear,
                         onHistory = { showHistory = true },
+                        onOverview = { showOverview = true },
                         onOpenPdf = { statute, page ->
                             pdfAssetFor(statute)?.let { pdfView = PdfTarget(it, page, statute) }
                         },
