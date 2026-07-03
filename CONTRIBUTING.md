@@ -1,151 +1,144 @@
-# Contributing to Janadhikar
+# 🤝 Contributing to Janadhikar
 
-Thank you for helping build a tool that people will rely on in some of the most stressful moments of their lives. That sentence is not rhetorical — it is the design constraint that governs every rule in this document.
+Thank you for helping build a tool people will rely on in stressful moments.
+That sentence is the design constraint behind every rule here.
 
-**A wrong answer from Janadhikar is worse than no answer.** A hallucinated section number shown to a citizen mid-confrontation can destroy their credibility, escalate the situation, or expose them to legal harm. Therefore this project enforces rules that are stricter than typical open-source etiquette. Read them before writing a single line of code.
+**A misleading answer is worse than a slow one.** So the guiding principle is
+**grounding + honesty**: give a genuinely helpful, readable answer, but keep the
+*exact verified law* one tap away and never let a small model's garbage reach the
+user.
+
+> 📐 Read **[ARCHITECTURE.md](ARCHITECTURE.md)** first — it has the diagrams for
+> every flow referenced below.
 
 ---
 
-## ☢️ The Zero-Hallucination Code of Conduct
+## 🧭 The philosophy (how it changed)
 
-These rules are **non-negotiable**. PRs violating them will be closed without extended discussion, regardless of code quality.
+The project started as a strict "translate-verbatim-only, zero-network" tool. It
+evolved — based on real user testing — into a **rich, grounded, distributable**
+assistant. Contributions must respect the *current* model:
 
-### Rule 1 — The LLM never generates legal facts
-
-The Gemma 3 model is a **translator and simplifier only**. It must never be prompted, fine-tuned, or post-processed in a way that allows it to produce:
-
-- Statute names or act titles
-- Section, clause, article, or sub-section numbers
-- Page numbers or citation strings
-- Legal claims not present verbatim in the retrieved database text
-
-**Enforcement in code:** the LLM prompt template lives in a single sealed location (`llm/PromptContract.kt`). It accepts exactly one dynamic field: the verbatim statute text retrieved from SQLite. Any PR that adds a second free-text injection point into the prompt, or that surfaces raw LLM output containing citation-like patterns (`Section \d+`, `Sec\.`, `धारा \d+`, page references) without a matching database row, is an automatic rejection.
-
-### Rule 2 — All metadata flows from database rows, verbatim
-
-The citation card (Statute / Section / Page Number) must be populated **exclusively** from typed fields on the SQLite relational row — never from parsed LLM output, never from string manipulation of the statute text, never from a constant in Kotlin code.
-
-```kotlin
-// ✅ CORRECT — typed fields from the DB row
-CitationCard(
-    statute = row.statuteName,
-    section = row.sectionNumber,
-    page = row.pageNumber,
-)
-
-// ❌ FORBIDDEN — parsing metadata out of model output
-val section = llmResponse.extractSectionNumber()   // instant PR rejection
+```mermaid
+flowchart LR
+    Q["Question"] --> R["Retrieve real law<br/>(DB, deterministic)"]
+    R --> M["Model explains it<br/>(rich Markdown)"]
+    M --> G{"OutputSanitizer<br/>garbage / prompt-echo?"}
+    G -- clean --> A["Answer + collapsible<br/>Sources card (verbatim law)"]
+    G -- garbage --> V["Show the verbatim law<br/>(never fails open)"]
 ```
 
-### Rule 3 — Low confidence means silence, not creativity
+---
 
-If `sqlite-vec` returns no match above the confidence threshold, the app outputs exactly:
+## ☑️ The rules (non-negotiable)
 
-> **"No verified legal statute found. Do not speculate."**
+### Rule 1 — Answers are grounded; the verified law is always available
+The model may explain, quote, and reference articles/cases to be genuinely
+useful — but every answer **must** be backed by the retrieved provision(s), and
+the **exact verbatim law** must be shown in the collapsible *Sources* card.
+- The grounded prompt lives in **one place**: `llm/PromptContract.kt`. Its
+  `build*` functions inject exactly one free-text field: `VerbatimStatuteText`
+  (from the DB). A structural test enforces this — don't add a raw-`String`
+  parameter that reaches a grounded prompt.
+- The dictionary "meaning of a word" helper is the *only* deliberate free-text
+  path, and it is clearly labelled as a plain-language definition, not law.
 
-Do not "improve" this path. Do not add fallbacks that ask the LLM to answer from general knowledge. Do not lower the confidence threshold to make demos look better. The threshold value is a governed constant and changing it requires a maintainer-approved evaluation run (see Rule 6).
+### Rule 2 — Citation metadata flows from typed DB rows, verbatim
+The Sources card (statute / section / page / source URL) is populated **only**
+from typed fields on the SQLite row — never parsed out of model output.
+```kotlin
+CitationCard(statute = row.statuteName, section = row.sectionNumber, page = row.pageNumber) // ✅
+val section = llmResponse.extractSectionNumber()   // ❌ instant rejection
+```
 
-### Rule 4 — The knowledge base is read-only at runtime and sacred at build time
+### Rule 3 — Never fail open
+If retrieval finds nothing confident → the refusal string
+*"No verified legal statute found. Do not speculate."* If the model errors, times
+out, or emits repetitive/prompt-echo garbage (`OutputSanitizer`), the app shows
+the **verbatim law**. Do not add a path that lets the model answer with no
+retrieved provision behind it.
 
+### Rule 4 — The knowledge base is read-only at runtime, sacred at build time
 - The app **never** writes to `janadhikar_knowledge.db`.
-- Every row in the knowledge base must trace to an official legal publication (Gazette of India, official ministry PDF, or authenticated bare-act text). Each row carries `source_document`, `source_page`, and `compilation_date` columns — these are mandatory, non-null, and reviewed by hand.
-- Changes to the knowledge pipeline (`knowledge-pipeline/`) require a **two-reviewer sign-off**, at least one of whom validates the extracted rows against the source PDF page-by-page for the affected sections.
+- Every row traces to an official source (India Code / Gazette / Constitution),
+  with `source_document`, `page_number`, `source_url`, `compilation_date`.
+- Pipeline changes (`knowledge-pipeline/`) need a source-checked review.
 
-### Rule 5 — No network. Not even a little.
+### Rule 5 — Network is used for EXACTLY one thing
+- `INTERNET` is permitted **only** for the one-time first-run model download
+  (a link-shared APK can't use `adb push`). **No** analytics, crash reporting,
+  telemetry, remote config, or ad SDKs — ever.
+- **Inference is 100% on-device.** No query, transcript, or answer may leave the
+  phone. A dependency that phones home for anything else is rejected.
 
-- `android.permission.INTERNET` must never appear in any manifest, including transitively via dependencies. CI fails the build if the merged manifest contains it.
-- No dependency may be added that phones home (analytics, crash reporting, remote config, ad SDKs). When adding any dependency, include the output of the merged-manifest check in your PR description.
-- "It only syncs when on Wi-Fi" is not a feature request we will accept. Offline is the product.
+### Rule 6 — The native path is gated on CPU capability
+ggml is compiled with ARM **dot-product** kernels for speed. Those SIGILL on CPUs
+without them, so `CpuFeatures.hasDotProd` gates llama.cpp/whisper at runtime.
+Any change to the native build or model loading must preserve this gate (old
+phones fall back to Gemma / verbatim, never crash).
 
-### Rule 6 — Accuracy changes require evidence
-
-Any PR touching retrieval (embedding model, chunking, confidence threshold, ranking) must include a run of the offline evaluation suite (`knowledge-pipeline/eval/`) showing:
-
-- **Precision@1** on the golden query set (English and Hindi separately)
-- **False-positive rate** at the proposed threshold (queries that *should* return "no verified statute" but don't)
-
-A change that improves recall while increasing false positives will be rejected. In this project, **a false positive is a safety incident**.
-
-### Rule 7 — Hindi is a first-class language, not a translation afterthought
-
-- Every user-facing string ships in English and Hindi simultaneously. PRs adding English-only strings are incomplete.
-- Hindi legal terminology must match the official Hindi versions of the statutes where they exist (e.g., use धारा for Section, not a colloquial paraphrase).
-- STT changes must be tested against Hindi audio samples, including code-switched ("Hinglish") speech, which is the dominant real-world register.
-
----
-
-## 🚨 Reporting a Factual Inaccuracy (Priority Zero)
-
-If you find the app displaying an incorrect statute, section number, page number, or a directive that misstates the law:
-
-1. Open an issue titled `[FACTUAL] <short description>` — this label pages maintainers.
-2. Include: the spoken/typed query, the displayed citation card, and the correct citation with a link or scan of the official source.
-3. Factual issues are triaged before all features and all bugs. A confirmed factual error triggers a knowledge-base hotfix release.
+### Rule 7 — Hindi & Hinglish are first-class
+- Every user-facing string ships in English **and** Hindi (`values/` + `values-hi/`).
+- A Hinglish query (`article 15 kya hain`) must resolve to a Hindi answer
+  (`QueryNormalizer` detects it).
+- Voice must be tested with Hindi + code-switched speech.
 
 ---
 
-## 🔀 Development Workflow
+## 🚨 Reporting a factual inaccuracy (Priority Zero)
+Found a wrong statute/section/page, or an answer that misstates the law?
+1. Open an issue `[FACTUAL] <description>`.
+2. Include the query, the shown Sources card, and the correct citation with an
+   official link.
+3. Factual issues are triaged before all features and bugs.
 
-### Branching & Commits
+---
 
-- Branch from `main`: `feat/<area>-<summary>`, `fix/<area>-<summary>`, `kb/<statute>-<summary>` (knowledge base changes).
-- Conventional Commits (`feat:`, `fix:`, `kb:`, `eval:`, `docs:`). Knowledge-base commits (`kb:`) must reference the source document in the body.
-- Keep PRs small. A PR that touches both the LLM layer and the memory layer will be asked to split.
+## 🔀 Development workflow
 
-### Code Standards
+```bash
+git clone --recurse-submodules git@github.com:FiscalMindset/JanAdhikar.git
+./gradlew :app:testDebugUnitTest        # unit tests
+./gradlew :app:assembleDebug            # builds native + APK
+```
 
-- Kotlin official style, enforced by `ktlint`; static analysis via `detekt` — both run in CI.
-- Jetpack Compose only; no XML layouts, no fragments.
-- All UI must remain usable at 200% font scale and pass a 7:1 contrast ratio check (the app targets outdoor, high-stress, possibly one-handed use).
-- JNI boundaries (whisper.cpp) must be wrapped in Kotlin classes with explicit lifecycle management — no raw pointers escaping the `stt/` package.
-- No blocking calls on the main thread. The Trigger → Active transition budget is **< 400 ms** on a Pixel 6a class device.
+- **Branches:** `feat/<area>-<summary>`, `fix/<area>-<summary>`, `kb/<statute>-…`.
+- **Commits:** Conventional Commits (`feat:`, `fix:`, `kb:`, `docs:`). `kb:`
+  commits reference the source document.
+- **Style:** Kotlin official style (`ktlint`) + `detekt`; Compose only (no XML).
+- **Threads:** no blocking work on the main thread; LLM/whisper run off `Default`
+  where they'd starve the mic/UI (see `ChatEngine` voice fix).
 
-### Testing Requirements
-
+### Tests by layer
 | Layer | Required tests |
 |---|---|
-| `memory/` | Unit tests for metadata extraction — including malformed rows, NULL columns, and below-threshold matches returning the refusal string |
-| `llm/` | Contract tests asserting the prompt template has exactly one injection point; output filter tests for citation-pattern leakage |
-| `engine/` | State machine tests covering every transition, including mic-permission denial and mid-transcription cancellation |
-| `ui/` | Compose screenshot tests for all three states in both languages |
+| `memory/` | metadata extraction, malformed rows, below-threshold → refusal; `DirectReference`, `MetaQuestion`, `HybridRetriever` |
+| `llm/` | `PromptContract` single-injection structural guard; `OutputSanitizer` garbage/echo rejection |
+| `engine/` | `ChatEngine` turn states; `ConversationStore`/`SessionArchive` round-trip; `FollowUp` |
+| `input/` | language detection incl. Hinglish → Hindi |
 
-PRs without tests for the affected layer will not be reviewed.
-
-### PR Checklist
-
-Copy this into your PR description and check every box:
-
+### PR checklist
 ```markdown
-- [ ] No new injection points into the LLM prompt (Rule 1)
-- [ ] All displayed metadata originates from typed DB row fields (Rule 2)
-- [ ] The low-confidence refusal path is unchanged or improved-with-evidence (Rule 3)
-- [ ] No writes to janadhikar_knowledge.db at runtime (Rule 4)
-- [ ] Merged manifest contains no INTERNET permission (Rule 5)
-- [ ] Retrieval-affecting changes include eval results (Rule 6)
-- [ ] All new strings exist in English AND Hindi (Rule 7)
+- [ ] Grounded prompt still has a single VerbatimStatuteText injection (Rule 1)
+- [ ] Sources metadata comes from typed DB fields (Rule 2)
+- [ ] Never-fail-open paths intact: refusal / verbatim fallback (Rule 3)
+- [ ] No runtime writes to the knowledge DB (Rule 4)
+- [ ] Network only for the model download; no telemetry (Rule 5)
+- [ ] Native CPU gate (CpuFeatures.hasDotProd) preserved (Rule 6)
+- [ ] New strings exist in English AND Hindi (Rule 7)
 - [ ] Tests added for the affected layer
 ```
 
 ---
 
-## 🤝 Community Conduct
-
-We follow the [Contributor Covenant v2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/). Beyond that, one project-specific norm:
-
-> **Argue about code freely; argue about the law with citations only.** Any claim about what a statute says must link to the official text. "I'm pretty sure the law says…" carries zero weight in this repository — by design, the same standard we hold the app to.
-
----
-
-## ⚖️ Scope Boundaries
-
-To keep the safety surface auditable, the following are **out of scope** and PRs proposing them will be declined:
-
-- Cloud sync, accounts, or any server component
-- Letting the LLM answer general legal questions ("chat with a lawyer" mode)
-- Auto-updating the knowledge base over the network
-- Recording or storing audio
-- Jurisdictions beyond the current verified corpus, unless accompanied by a fully sourced knowledge-pipeline contribution meeting Rule 4
+## ⚖️ Scope boundaries (declined by default)
+- Cloud sync, accounts, or a server component
+- Telemetry / analytics / crash reporting / ads
+- Sending any query or answer to a remote service
+- Storing raw audio recordings
+- New jurisdictions without a fully sourced knowledge-pipeline contribution (Rule 4)
 
 ---
 
-*Janadhikar exists because someone, somewhere, will trust it completely at the worst moment of their day. Build accordingly.*
+*Janadhikar exists because someone will trust it completely at the worst moment
+of their day. Build accordingly.*

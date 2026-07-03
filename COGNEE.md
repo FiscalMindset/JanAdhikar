@@ -2,8 +2,10 @@
 
 > **TL;DR:** Cognee runs **only at build time, on a desktop**. It compiles official
 > legal PDFs into a knowledge graph, which we flatten into plain SQLite tables and
-> ship inside the APK. **Zero Cognee code, zero Python, zero network exists on the
-> device.** The app stays 100% offline; Cognee's intelligence survives as data.
+> ship **inside the APK**. **No Cognee code, no Python, and no knowledge-base
+> network call exist on the device** — the graph survives as pure data. (The app's
+> *only* runtime network use is unrelated: a one-time download of the answer model,
+> see [ARCHITECTURE.md](ARCHITECTURE.md). Retrieval and inference are all on-device.)
 
 ---
 
