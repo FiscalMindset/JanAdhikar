@@ -1,7 +1,9 @@
 package com.janadhikar.engine
 
 import android.content.Context
+import com.janadhikar.llm.Directive
 import com.janadhikar.llm.GemmaTranslator
+import com.janadhikar.llm.VerbatimStatuteText
 import com.janadhikar.memory.HybridRetriever
 import com.janadhikar.memory.KnowledgeBaseProvisioner
 import com.janadhikar.memory.KnowledgeDatabase
@@ -51,9 +53,23 @@ class EdgeStack private constructor(
             )
 
             // ── Edge models: provisioned from APK assets, memory-mapped ──
-            val embedder = QueryEmbedder(context)
+            val tokenizer = context.assets.open(QueryEmbedder.VOCAB_ASSET).bufferedReader().useLines {
+                com.janadhikar.memory.SentencePieceTokenizer(
+                    com.janadhikar.memory.SentencePieceTokenizer.loadVocab(it),
+                )
+            }
+            val embedder = QueryEmbedder(
+                modelFile = provisionAsset(context, QueryEmbedder.MODEL_ASSET),
+                tokenizer = tokenizer,
+            )
             val whisper = WhisperBridge.open(provisionAsset(context, WHISPER_MODEL_ASSET))
-            val gemma = GemmaTranslator(context, provisionAsset(context, GemmaTranslator.MODEL_ASSET))
+
+            // Gemma is license-gated (see scripts/fetch_models.sh). Without it,
+            // directives fall back to verbatim statute text — always safe, and
+            // the retrieval shield stays fully functional.
+            val gemma = runCatching {
+                GemmaTranslator(context, provisionAsset(context, GemmaTranslator.MODEL_ASSET))
+            }.getOrNull()
 
             val retriever = HybridRetriever(
                 dao = db.dao(),
@@ -70,13 +86,19 @@ class EdgeStack private constructor(
                     }
                 },
                 retrieve = { query -> retriever.retrieve(query.text) },
-                translate = gemma::translate,
+                translate = { citation, language ->
+                    gemma?.translate(citation, language) ?: Directive(
+                        text = VerbatimStatuteText.from(citation, language).value,
+                        language = language,
+                        isVerbatimFallback = true,
+                    )
+                },
                 clock = System::currentTimeMillis,
             )
 
             EdgeStack(
                 engine = engine,
-                closeables = listOf(gemma, whisper, embedder, vec, Closeable { db.close() }),
+                closeables = listOfNotNull(gemma, whisper, embedder, vec, Closeable { db.close() }),
                 scope = scope,
             )
         }
@@ -84,6 +106,7 @@ class EdgeStack private constructor(
         /** Copies a model out of assets once; models are immutable per APK. */
         private fun provisionAsset(context: Context, assetPath: String): File {
             val target = File(context.noBackupFilesDir, assetPath.substringAfterLast('/'))
+            target.parentFile?.mkdirs() // no_backup/ may not exist on a fresh install
             val assetSize = context.assets.openFd(assetPath).use { it.length }
             if (target.length() != assetSize) {
                 context.assets.open(assetPath).use { input ->

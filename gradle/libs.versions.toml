@@ -13,7 +13,7 @@ navigationCompose = "2.8.5"
 # MediaPipe GenAI Tasks = the supported LiteRT path for Gemma-class LLM inference.
 # It bundles the LiteRT runtime with LLM-specific session/KV-cache handling.
 mediapipeGenai = "0.10.24"
-mediapipeText = "0.10.21"
+litert = "1.0.1"
 
 # Persistence
 room = "2.6.1"
@@ -54,7 +54,7 @@ lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-
 
 # --- Edge AI: LiteRT / Gemma 3 via MediaPipe GenAI ---
 mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeGenai" }
-mediapipe-tasks-text = { group = "com.google.mediapipe", name = "tasks-text", version.ref = "mediapipeText" }
+litert = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert" }
 
 # --- Persistence: Room over a custom sqlite-vec-enabled SQLite build ---
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }

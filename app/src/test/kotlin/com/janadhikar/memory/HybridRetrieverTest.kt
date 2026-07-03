@@ -41,9 +41,9 @@ class HybridRetrieverTest {
 
     @Test
     fun `below-threshold match returns NoVerifiedStatute, never a weak answer`() = runTest {
-        // distance 0.5 → similarity 0.5 < 0.72 threshold
+        // distance 0.8 → similarity 0.2 < CONFIDENCE_THRESHOLD (0.34)
         val vec = HybridRetriever.VectorSearch { _, _ ->
-            listOf(SqliteVecBridge.Neighbor(chunkId = 1L, distance = 0.5f))
+            listOf(SqliteVecBridge.Neighbor(chunkId = 1L, distance = 0.8f))
         }
         val retriever = HybridRetriever(FakeDao(chunks = listOf(chunk(1L, 10L))), vec, zeroEmbedding)
         assertThat(retriever.retrieve("unrelated query"))

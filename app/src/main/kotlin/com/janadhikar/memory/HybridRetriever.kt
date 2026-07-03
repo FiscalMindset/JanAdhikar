@@ -66,10 +66,54 @@ class HybridRetriever(
         return RetrievalResult.Match(
             primary = primary,
             confidence = confidence,
-            related = relatedRights(primary),
+            related = relatedProvisions(primary, orderedChunks),
             redirectedFromSuperseded = redirected,
         )
     }
+
+    /**
+     * Related provisions shown under the directive, from two sources, deduped:
+     *   1. GRAPH — RELATED_RIGHT edges (in-text cross-references) of the primary.
+     *   2. VECTOR — the other above-threshold KNN hits.
+     *
+     * (2) is why a query whose ideal section ranks #2 still surfaces it: e.g.
+     * "why am I being arrested" ranks §58 (24-hour limit) first, but §47
+     * (grounds of arrest) is right behind and appears here. Every entry is
+     * still strictly extracted — no unverified row is ever shown.
+     */
+    private suspend fun relatedProvisions(
+        primary: VerifiedCitation,
+        vectorChunks: List<StatuteChunkEntity>,
+    ): List<VerifiedCitation> {
+        val ordered = LinkedHashMap<Long, VerifiedCitation>()
+        for (citation in graphRelated(primary) + vectorRelated(vectorChunks)) {
+            if (citation.chunkId != primary.chunkId) ordered.putIfAbsent(citation.chunkId, citation)
+        }
+        return ordered.values.take(MAX_RELATED)
+    }
+
+    /** RELATED_RIGHT neighbours of the primary, weight-ranked, strictly extracted. */
+    private suspend fun graphRelated(primary: VerifiedCitation): List<VerifiedCitation> {
+        val primaryChunk = dao.chunksByIds(listOf(primary.chunkId)).firstOrNull() ?: return emptyList()
+        return dao.edgesFrom(primaryChunk.nodeId, Relations.RELATED_RIGHT, MAX_RELATED)
+            .mapNotNull { edge -> dao.chunkByNodeId(edge.dstNodeId) }
+            .mapNotNull(::extractOrNull)
+    }
+
+    /**
+     * The other above-threshold KNN hits, in similarity order. Each is put
+     * through the SAME supersession redirect as the primary, so a repealed
+     * section never appears as a related provision either (Rule 4). A hit that
+     * redirects away or fails strict extraction is dropped, not repaired.
+     */
+    private suspend fun vectorRelated(vectorChunks: List<StatuteChunkEntity>): List<VerifiedCitation> =
+        vectorChunks.mapNotNull { chunk ->
+            val (current, _) = followSupersession(chunk) ?: return@mapNotNull null
+            extractOrNull(current)
+        }
+
+    private fun extractOrNull(chunk: StatuteChunkEntity): VerifiedCitation? =
+        (MetadataExtractor.extract(chunk) as? MetadataExtractor.Extraction.Valid)?.citation
 
     /**
      * Walks SUPERSEDED_BY / AMENDED_BY edges to the CURRENT law. Returns null
@@ -95,26 +139,22 @@ class HybridRetriever(
         return null // supersession cycle or chain too deep: fail closed
     }
 
-    /** RELATED_RIGHT neighbours, weight-ranked, capped, strictly extracted. */
-    private suspend fun relatedRights(primary: VerifiedCitation): List<VerifiedCitation> {
-        val primaryChunk = dao.chunksByIds(listOf(primary.chunkId)).firstOrNull() ?: return emptyList()
-        return dao.edgesFrom(primaryChunk.nodeId, Relations.RELATED_RIGHT, MAX_RELATED)
-            .mapNotNull { edge -> dao.chunkByNodeId(edge.dstNodeId) }
-            .mapNotNull { chunk ->
-                (MetadataExtractor.extract(chunk) as? MetadataExtractor.Extraction.Valid)?.citation
-            }
-    }
-
     companion object {
         /**
          * GOVERNED CONSTANT (Rules 3 & 6). Minimum cosine similarity for a
          * match to exist at all. Do not tune without an eval run; a false
          * positive here is a safety incident.
+         *
+         * Current value from knowledge-pipeline/eval_queries.py on the
+         * 2026-07-03 artifact (paraphrase-multilingual-MiniLM-L12-v2):
+         *   best junk-query sim   0.287  ← must stay below
+         *   worst genuine-hit sim 0.388  ← must stay above
+         *   Precision@1 7/14, Hit@3 12/14
          */
-        const val CONFIDENCE_THRESHOLD = 0.72f
+        const val CONFIDENCE_THRESHOLD = 0.34f
 
         const val K_NEIGHBORS = 8
-        private const val MAX_RELATED = 3
+        private const val MAX_RELATED = 4
         private const val MAX_GRAPH_HOPS = 4
     }
 }

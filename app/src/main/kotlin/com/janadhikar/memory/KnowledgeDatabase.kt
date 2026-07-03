@@ -44,9 +44,10 @@ abstract class KnowledgeDatabase : RoomDatabase() {
             Room.databaseBuilder(context, KnowledgeDatabase::class.java, dbFile.absolutePath)
                 .addCallback(object : Callback() {
                     override fun onOpen(db: SupportSQLiteDatabase) {
-                        // Belt-and-braces with the file-level read-only bit and
-                        // the SELECT-only DAO: the connection itself refuses writes.
-                        db.query("PRAGMA query_only = 1").close()
+                        // Belt-and-braces with the SELECT-only DAO and the
+                        // native read-only connection: this connection itself
+                        // refuses writes at the SQLite level.
+                        db.execSQL("PRAGMA query_only = 1")
                     }
                 })
                 .build()

@@ -120,8 +120,9 @@ dependencies {
 
     // --- Edge AI: Gemma 3 on LiteRT via MediaPipe GenAI tasks ---
     implementation(libs.mediapipe.tasks.genai)
-    // On-device query embedding (multilingual .tflite bundled in assets)
-    implementation(libs.mediapipe.tasks.text)
+    // On-device query embedding: raw LiteRT interpreter over the bundled
+    // multilingual embedder graph (tokenization is pure Kotlin WordPiece)
+    implementation(libs.litert)
 
     // --- Memory layer: Room over sqlite-vec-enabled SQLite (custom native build) ---
     implementation(libs.room.runtime)
@@ -146,6 +147,8 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.truth)
+    androidTestImplementation(libs.coroutines.test)
 }
 
 /**
