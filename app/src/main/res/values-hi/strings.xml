@@ -10,6 +10,10 @@
     <string name="trigger_type_hint">या अपनी स्थिति लिखें…</string>
     <string name="trigger_submit">मेरे अधिकार खोजें</string>
     <string name="warming_up">ऑफ़लाइन इंजन तैयार हो रहा है…</string>
+    <string name="status_law">क़ानून</string>
+    <string name="status_search">खोज</string>
+    <string name="status_translator">AI</string>
+    <string name="status_voice">आवाज़</string>
     <string name="engine_assets_missing">ऑफ़लाइन इंजन शुरू नहीं हो सका — इस बिल्ड में मॉडल या ज्ञान फ़ाइलें मौजूद नहीं हैं।</string>
     <string name="mic_button">बोलें</string>
 
@@ -31,6 +35,7 @@
     <string name="clause_label">खंड</string>
     <string name="page_label">पृष्ठ</string>
     <string name="source_label">स्रोत</string>
+    <string name="source_copied">उद्धरण कॉपी किया गया</string>
     <string name="compiled_label">सत्यापन तिथि</string>
     <string name="related_provisions">संबंधित प्रावधान</string>
     <string name="verbatim_shown">क़ानून का यथावत पाठ दिखाया गया है</string>

@@ -11,6 +11,10 @@
     <string name="trigger_type_hint">Or type your situation…</string>
     <string name="trigger_submit">Find my rights</string>
     <string name="warming_up">Preparing offline engine…</string>
+    <string name="status_law">Law</string>
+    <string name="status_search">Search</string>
+    <string name="status_translator">AI</string>
+    <string name="status_voice">Voice</string>
     <string name="engine_assets_missing">Offline engine could not start — model or knowledge files are missing from this build.</string>
     <string name="mic_button">Speak</string>
 
@@ -32,6 +36,7 @@
     <string name="clause_label">Clause</string>
     <string name="page_label">Page</string>
     <string name="source_label">Source</string>
+    <string name="source_copied">Citation copied</string>
     <string name="compiled_label">Verified as of</string>
     <string name="related_provisions">Related provisions</string>
     <string name="verbatim_shown">Exact text of the law shown</string>

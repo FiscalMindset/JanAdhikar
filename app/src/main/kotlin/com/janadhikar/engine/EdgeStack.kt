@@ -16,6 +16,10 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -34,10 +38,26 @@ import java.io.File
  */
 class EdgeStack private constructor(
     val engine: IncidentEngine,
+    /** Live status of each on-device component, for the status row. */
+    val status: StateFlow<Status>,
     private val closeables: List<Closeable>,
     private val lazyCloseables: List<Deferred<Closeable?>>,
     private val scope: CoroutineScope,
 ) : Closeable {
+
+    enum class ModelStatus { LOADING, READY, UNAVAILABLE }
+
+    /**
+     * What the user can see is loaded. Knowledge base + search embedder are
+     * always READY here (create() only returns once they are). Voice and the
+     * AI translator load in the background.
+     */
+    data class Status(
+        val knowledgeBase: ModelStatus = ModelStatus.READY,
+        val searchEngine: ModelStatus = ModelStatus.READY,
+        val voice: ModelStatus = ModelStatus.LOADING,
+        val translator: ModelStatus = ModelStatus.LOADING,
+    )
 
     override fun close() {
         engine.cancel()
@@ -90,6 +110,21 @@ class EdgeStack private constructor(
                 }.getOrNull()
             }
 
+            // Reflect background-load outcomes into the visible status row.
+            val status = MutableStateFlow(Status())
+            scope.launch {
+                val ok = whisperDeferred.await() != null
+                status.value = status.value.copy(
+                    voice = if (ok) ModelStatus.READY else ModelStatus.UNAVAILABLE,
+                )
+            }
+            scope.launch {
+                val ok = gemmaDeferred.await() != null
+                status.value = status.value.copy(
+                    translator = if (ok) ModelStatus.READY else ModelStatus.UNAVAILABLE,
+                )
+            }
+
             val retriever = HybridRetriever(
                 dao = db.dao(),
                 vectorIndex = { query, k -> vec.search(query, k) },
@@ -128,6 +163,7 @@ class EdgeStack private constructor(
 
             EdgeStack(
                 engine = engine,
+                status = status.asStateFlow(),
                 closeables = listOf(embedder, vec, Closeable { db.close() }),
                 lazyCloseables = listOf(whisperDeferred, gemmaDeferred),
                 scope = scope,

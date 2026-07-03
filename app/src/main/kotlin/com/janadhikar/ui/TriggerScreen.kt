@@ -3,6 +3,7 @@ package com.janadhikar.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.janadhikar.R
 import com.janadhikar.ui.components.PulsingMicButton
 import com.janadhikar.ui.theme.Palette
@@ -50,6 +52,7 @@ fun TriggerScreen(
     modifier: Modifier = Modifier,
     history: List<com.janadhikar.engine.IncidentState.Shield> = emptyList(),
     onHistoryClick: (com.janadhikar.engine.IncidentState.Shield) -> Unit = {},
+    modelStatus: com.janadhikar.engine.EdgeStack.Status? = null,
     /** Red status line (warm-up failure, mic error). Never LLM/DB content. */
     statusMessage: String? = null,
 ) {
@@ -67,6 +70,17 @@ fun TriggerScreen(
             style = MaterialTheme.typography.titleLarge,
             color = Palette.DimGray,
         )
+        if (modelStatus != null) {
+            Spacer(Modifier.height(6.dp))
+            ModelStatusRow(modelStatus)
+        } else if (!engineReady) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.warming_up),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Palette.DimGray,
+            )
+        }
 
         // ── The mic: ~50% of the screen, one giant target ──
         Box(
@@ -181,4 +195,29 @@ fun TriggerScreen(
         }
         Spacer(Modifier.height(16.dp))
     }
+}
+
+/** Compact live status of the on-device components. */
+@Composable
+private fun ModelStatusRow(status: com.janadhikar.engine.EdgeStack.Status) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        StatusPill(stringResource(R.string.status_law), status.knowledgeBase)
+        StatusPill(stringResource(R.string.status_search), status.searchEngine)
+        StatusPill(stringResource(R.string.status_translator), status.translator)
+        StatusPill(stringResource(R.string.status_voice), status.voice)
+    }
+}
+
+@Composable
+private fun StatusPill(label: String, status: com.janadhikar.engine.EdgeStack.ModelStatus) {
+    val (dot, color) = when (status) {
+        com.janadhikar.engine.EdgeStack.ModelStatus.READY -> "●" to Palette.TickerGreen
+        com.janadhikar.engine.EdgeStack.ModelStatus.LOADING -> "◐" to Palette.AccentOrange
+        com.janadhikar.engine.EdgeStack.ModelStatus.UNAVAILABLE -> "○" to Palette.DimGray
+    }
+    Text(
+        text = "$dot $label",
+        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+        color = color,
+    )
 }

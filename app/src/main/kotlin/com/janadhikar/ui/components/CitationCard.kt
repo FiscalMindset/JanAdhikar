@@ -21,8 +21,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -105,7 +109,41 @@ fun CitationCard(
         }
 
         DashedDivider()
-        ReceiptRow(stringResource(R.string.source_label), citation.sourceDocument, small = true)
+        // Source is tappable: copies the full citation reference to the
+        // clipboard so a citizen can look it up / share it. (The app makes no
+        // network calls; opening it elsewhere is the user's choice.)
+        val clipboard = LocalClipboardManager.current
+        val copied = stringResource(R.string.source_copied)
+        val context = LocalContext.current
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    val ref = "$statuteName, $unitLabel ${citation.sectionNumber}, p.${citation.pageNumber} " +
+                        "— ${citation.sourceDocument}"
+                    clipboard.setText(AnnotatedString(ref))
+                    Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
+                }
+                .padding(vertical = 3.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.source_label).uppercase() + "  ⧉",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                ),
+                color = Palette.InkBlack.copy(alpha = 0.6f),
+                modifier = Modifier.padding(end = 12.dp),
+            )
+            Text(
+                text = citation.sourceDocument,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                ),
+                color = Palette.InkBlack,
+            )
+        }
         ReceiptRow(stringResource(R.string.compiled_label), citation.compilationDate, small = true)
     }
 }

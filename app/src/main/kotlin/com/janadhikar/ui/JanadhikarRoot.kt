@@ -55,6 +55,7 @@ fun JanadhikarRoot(
 
                 val state by stack.engine.state.collectAsState()
                 val history by stack.engine.history.collectAsState()
+                val modelStatus by stack.status.collectAsState()
 
                 // Arm/disarm the SOS countdown in lockstep with Resolution.
                 LaunchedEffect(state) {
@@ -72,6 +73,7 @@ fun JanadhikarRoot(
                         onSubmitText = stack.engine::submitTypedQuery,
                         history = history,
                         onHistoryClick = stack.engine::showFromHistory,
+                        modelStatus = modelStatus,
                     )
                     is IncidentState.Active -> ActiveScreen(
                         transcript = s.transcript,
@@ -98,6 +100,7 @@ fun JanadhikarRoot(
                             onSubmitText = stack.engine::submitTypedQuery,
                             history = history,
                             onHistoryClick = stack.engine::showFromHistory,
+                            modelStatus = modelStatus,
                             statusMessage = stringResource(R.string.mic_error),
                         )
                     }
