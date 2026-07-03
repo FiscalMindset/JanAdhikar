@@ -188,6 +188,12 @@ class EdgeStack private constructor(
                     gemmaDeferred.await()?.define(phrase, language, onDelta)
                         ?: Directive("The AI model is not available to explain words.", language, false)
                 },
+                reexplain = { citation, language, style, onDelta ->
+                    gemmaDeferred.await()?.translate(citation, language, style, onDelta) ?: Directive(
+                        text = VerbatimStatuteText.from(citation, language).value,
+                        language = language, isVerbatimFallback = true,
+                    )
+                },
                 clock = System::currentTimeMillis,
                 store = FileConversationStore(File(context.filesDir, "conversation.json")),
                 archive = FileSessionArchive(File(context.filesDir, "sessions.json")),

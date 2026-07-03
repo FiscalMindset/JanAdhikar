@@ -21,6 +21,20 @@ object FollowUp {
     // If they named a concrete provision, it's a NEW question, not a follow-up.
     private val HAS_REFERENCE = Regex("""\b(art(icle)?|sec(tion)?|s)\.?\s*\d""", RegexOption.IGNORE_CASE)
 
+    private val WANTS_EXAMPLE = Regex("""example|उदाहरण""", RegexOption.IGNORE_CASE)
+    private val WANTS_SIMPLER =
+        Regex("""simpl|simple|easy|easier|aasan|saral|सरल|आसान|child|kid""", RegexOption.IGNORE_CASE)
+
+    /** How to re-answer a follow-up: a distinctly different take, not a repeat. */
+    enum class Intent { SIMPLER, EXAMPLE, REPHRASE }
+
     fun isFollowUp(rawQuery: String): Boolean =
         FOLLOWUP.containsMatchIn(rawQuery) && !HAS_REFERENCE.containsMatchIn(rawQuery)
+
+    /** Classify a follow-up so the re-explanation actually differs. */
+    fun classify(rawQuery: String): Intent = when {
+        WANTS_EXAMPLE.containsMatchIn(rawQuery) -> Intent.EXAMPLE
+        WANTS_SIMPLER.containsMatchIn(rawQuery) -> Intent.SIMPLER
+        else -> Intent.REPHRASE
+    }
 }

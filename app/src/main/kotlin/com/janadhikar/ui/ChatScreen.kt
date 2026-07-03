@@ -338,7 +338,8 @@ private fun MetaBlock(a: Answer.Grounded) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Palette.Black, RoundedCornerShape(8.dp))
+            .background(Palette.NearBlack, RoundedCornerShape(8.dp))
+            .border(1.dp, Palette.ChatAssistantEdge, RoundedCornerShape(8.dp))
             .padding(10.dp),
     ) {
         rows.forEach { (k, v) ->
@@ -370,11 +371,28 @@ private fun AnswerBubble(content: @Composable androidx.compose.foundation.layout
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.96f)
-                .background(Palette.NearBlack, RoundedCornerShape(14.dp))
-                .padding(14.dp),
-            content = content,
-        )
+                .fillMaxWidth()
+                .background(Palette.ChatAssistant, RoundedCornerShape(16.dp))
+                .border(1.dp, Palette.ChatAssistantEdge, RoundedCornerShape(16.dp))
+                .padding(16.dp),
+        ) {
+            // A small "verified assistant" header so the answer reads as a card.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(Palette.Answered, CircleShape),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
+                    color = Palette.Answered,
+                )
+            }
+            Spacer(Modifier.size(10.dp))
+            content()
+        }
     }
 }
 

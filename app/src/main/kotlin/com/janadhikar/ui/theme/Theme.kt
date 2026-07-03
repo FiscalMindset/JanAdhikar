@@ -37,6 +37,11 @@ object Palette {
 
     /** User's chat bubble. */
     val ChatUser = Color(0xFF1E2A38)
+
+    /** Assistant's answer card — an elevated dark slate, not flat black. */
+    val ChatAssistant = Color(0xFF191C22)
+    val ChatAssistantEdge = Color(0xFF2A2F38)
+    val Answered = Color(0xFF7EE0B0) // soft green accent for a verified answer
 }
 
 private val Scheme = darkColorScheme(

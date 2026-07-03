@@ -63,7 +63,13 @@ class GemmaTranslator(
     )
 
     suspend fun translate(citation: VerifiedCitation, output: AppLanguage): Directive =
-        translate(citation, output, onDelta = {})
+        translate(citation, output, PromptContract.Style.NORMAL, onDelta = {})
+
+    suspend fun translate(
+        citation: VerifiedCitation,
+        output: AppLanguage,
+        onDelta: (String) -> Unit,
+    ): Directive = translate(citation, output, PromptContract.Style.NORMAL, onDelta)
 
     /**
      * Streams the explanation token-by-token via [onDelta] (called on the main
@@ -74,10 +80,11 @@ class GemmaTranslator(
     suspend fun translate(
         citation: VerifiedCitation,
         output: AppLanguage,
+        style: PromptContract.Style,
         onDelta: (String) -> Unit,
     ): Directive {
         val verbatim = VerbatimStatuteText.from(citation, output)
-        val prompt = PromptContract.build(verbatim, output)
+        val prompt = PromptContract.build(verbatim, output, style)
         val startedAt = System.currentTimeMillis()
 
         val full = StringBuilder()

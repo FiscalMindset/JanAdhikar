@@ -4,6 +4,7 @@ import com.janadhikar.input.AppLanguage
 import com.janadhikar.input.NormalizedQuery
 import com.janadhikar.input.QueryNormalizer
 import com.janadhikar.llm.Directive
+import com.janadhikar.llm.PromptContract
 import com.janadhikar.memory.model.RetrievalResult
 import com.janadhikar.memory.model.VerifiedCitation
 import kotlinx.coroutines.CancellationException
@@ -36,6 +37,9 @@ class ChatEngine(
     private val define: suspend (String, AppLanguage, (String) -> Unit) -> Directive = { _, l, _ ->
         Directive("", l, false)
     },
+    /** Re-explain a provision in a distinctly different style (follow-ups). */
+    private val reexplain: suspend (VerifiedCitation, AppLanguage, PromptContract.Style, (String) -> Unit) -> Directive =
+        { c, l, _, d -> translate(c, l, d) },
     private val clock: () -> Long,
     private val preferredLanguage: () -> AppLanguage? = { null },
     private val store: ConversationStore = NoopConversationStore,
@@ -195,6 +199,11 @@ class ChatEngine(
             val startedAt = clock()
             val language = preferredLanguage() ?: previous.explanation.language
             val primary = previous.citations.first()
+            val style = when (FollowUp.classify(rawQuery)) {
+                FollowUp.Intent.EXAMPLE -> PromptContract.Style.EXAMPLE
+                FollowUp.Intent.SIMPLER -> PromptContract.Style.SIMPLER
+                FollowUp.Intent.REPHRASE -> PromptContract.Style.SIMPLER
+            }
             fun grounded(directive: Directive, streaming: Boolean) = Answer.Grounded(
                 explanation = directive,
                 citations = previous.citations,
@@ -205,7 +214,7 @@ class ChatEngine(
             val answer = try {
                 val partial = StringBuilder()
                 updateTurn(id) { it.copy(answer = grounded(Directive("", language, false), true)) }
-                val explanation = translate(primary, language) { delta ->
+                val explanation = reexplain(primary, language, style) { delta ->
                     partial.append(delta)
                     updateTurn(id) {
                         it.copy(answer = grounded(Directive(partial.toString(), language, false), true))
