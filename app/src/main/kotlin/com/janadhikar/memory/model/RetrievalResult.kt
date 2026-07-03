@@ -19,6 +19,7 @@ data class VerifiedCitation(
     val verbatimTextEn: String,
     val verbatimTextHi: String,
     val sourceDocument: String,
+    val sourceUrl: String,
     val compilationDate: String,
 )
 

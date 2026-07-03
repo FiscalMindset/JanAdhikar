@@ -34,6 +34,7 @@ class UiStatesTest {
         verbatimTextEn = "Grounds of arrest shall be communicated forthwith.",
         verbatimTextHi = "गिरफ्तारी के आधार तुरंत बताए जाएँगे।",
         sourceDocument = "BNSS_2023_Gazette.pdf",
+        sourceUrl = "https://www.indiacode.nic.in/handle/123456789/21419",
         compilationDate = "2026-05-01",
     )
 
@@ -101,6 +102,7 @@ class UiStatesTest {
     @Test
     fun shield_rendersDirectiveAndCitationFromTypedFieldsOnly() {
         val shield = IncidentState.Shield(
+            query = "police won't tell me why",
             directive = Directive("Demand the grounds of your arrest now.", AppLanguage.ENGLISH, false),
             citation = citation,
             related = emptyList(),
@@ -121,6 +123,7 @@ class UiStatesTest {
     @Test
     fun shield_rendersHindiStatuteName_whenDirectiveIsHindi() {
         val shield = IncidentState.Shield(
+            query = "police won't tell me why",
             directive = Directive("अभी गिरफ्तारी का कारण पूछें।", AppLanguage.HINDI, false),
             citation = citation,
             related = emptyList(),

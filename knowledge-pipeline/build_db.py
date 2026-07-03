@@ -117,6 +117,7 @@ def main() -> None:
                     "source_document": act["source_document"],
                     "source_sha256": source_sha,
                     "compilation_date": date.today().isoformat(),
+                    "source_url": act.get("source_url", ""),
                 }
             )
 
@@ -165,7 +166,7 @@ def main() -> None:
     conn.executemany(
         "INSERT INTO statute_chunks VALUES (:id,:node_id,:statute_name,:statute_name_hi,"
         ":unit,:section_number,:clause,:page_number,:chunk_text_en,:chunk_text_hi,"
-        ":source_document,:source_sha256,:compilation_date)",
+        ":source_document,:source_sha256,:compilation_date,:source_url)",
         chunks_rows,
     )
     conn.executemany("INSERT INTO graph_nodes VALUES (?,?,?,?,?)", nodes)

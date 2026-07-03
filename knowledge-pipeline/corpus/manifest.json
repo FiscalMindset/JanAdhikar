@@ -8,7 +8,8 @@
       "unit": "Article",
       "mode": "flow",
       "max_gap": 10,
-      "expected_last_section": 395
+      "expected_last_section": 395,
+      "source_url": "https://www.indiacode.nic.in/handle/123456789/19632"
     },
     {
       "pdf": "corpus/bns_2023.pdf",
@@ -18,7 +19,8 @@
       "unit": "Section",
       "mode": "lines",
       "max_gap": 1,
-      "expected_last_section": 358
+      "expected_last_section": 358,
+      "source_url": "https://www.indiacode.nic.in/handle/123456789/20062"
     },
     {
       "pdf": "corpus/bnss_2023.pdf",
@@ -28,7 +30,8 @@
       "unit": "Section",
       "mode": "lines",
       "max_gap": 1,
-      "expected_last_section": 531
+      "expected_last_section": 531,
+      "source_url": "https://www.indiacode.nic.in/handle/123456789/21419"
     },
     {
       "pdf": "corpus/bsa_2023.pdf",
@@ -38,7 +41,8 @@
       "unit": "Section",
       "mode": "lines",
       "max_gap": 1,
-      "expected_last_section": 170
+      "expected_last_section": 170,
+      "source_url": "https://www.indiacode.nic.in/handle/123456789/20063"
     },
     {
       "pdf": "corpus/motor_vehicles_1988.pdf",
@@ -48,7 +52,8 @@
       "unit": "Section",
       "mode": "lines",
       "max_gap": 3,
-      "expected_last_section": 217
+      "expected_last_section": 217,
+      "source_url": "https://www.indiacode.nic.in/handle/123456789/9460"
     }
   ]
 }

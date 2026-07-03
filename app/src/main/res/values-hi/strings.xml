@@ -43,6 +43,14 @@
 
     <!-- Resolution: actions -->
     <string name="done">पूर्ण</string>
+    <string name="ask_followup">एक और सवाल पूछें…</string>
+    <string name="details">विवरण</string>
+    <string name="detail_model">मॉडल</string>
+    <string name="detail_time">जनरेशन समय</string>
+    <string name="detail_tokens">टोकन</string>
+    <string name="detail_confidence">मिलान विश्वास</string>
+    <string name="detail_embedder">खोज मॉडल</string>
+    <string name="detail_source_url">स्रोत लिंक</string>
     <string name="mic_error">माइक्रोफ़ोन उपलब्ध नहीं। आप अपनी स्थिति लिख सकते हैं।</string>
 
     <!-- SOS -->

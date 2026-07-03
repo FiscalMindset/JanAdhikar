@@ -40,6 +40,7 @@ object MetadataExtractor {
                     verbatimTextEn = row.chunkTextEn,
                     verbatimTextHi = row.chunkTextHi,
                     sourceDocument = row.sourceDocument.trim(),
+                    sourceUrl = row.sourceUrl.trim(),
                     compilationDate = row.compilationDate.trim(),
                 ),
             )

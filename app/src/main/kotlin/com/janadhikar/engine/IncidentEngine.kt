@@ -64,25 +64,41 @@ class IncidentEngine(
     // ── Voice path ───────────────────────────────────────────────────────────
 
     fun startVoiceCapture() {
-        if (_state.value !is IncidentState.Idle) return
+        // Allow starting a new session from any non-processing state (Idle, or a
+        // prior result) — but never interrupt an in-flight Active session.
+        if (_state.value is IncidentState.Active) return
         startedAt = clock()
         pcmWindow = FloatArray(0)
         sessionIsVoice = true
         _state.value = IncidentState.Active("", AgentPhase.LISTENING, 0L, isVoice = true)
 
         captureJob = scope.launch {
+            var lastDecodeSamples = 0
+            var liveTranscript = ""
             try {
-                // Accumulate audio only; transcribe ONCE on stop. Re-decoding the
-                // whole growing window every couple of seconds was O(n²) and made
-                // voice sluggish for no benefit — the transcript is only needed at
-                // resolution time. The elapsed clock still updates the timer.
                 audioSource.stream().collect { chunk ->
                     pcmWindow += chunk
                     if (elapsed() >= MAX_CAPTURE_MILLIS) {
                         stopAndResolve()
                         return@collect
                     }
-                    _state.value = IncidentState.Active("", AgentPhase.LISTENING, elapsed(), isVoice = true)
+                    // LIVE transcription: re-decode the window every ~2.5 s so the
+                    // user sees their words appear as they speak. Safe because all
+                    // whisper calls are serialized by a mutex (EdgeStack); a slow
+                    // decode just delays the next update, never overlaps.
+                    if (pcmWindow.size - lastDecodeSamples >= LIVE_DECODE_SAMPLES) {
+                        lastDecodeSamples = pcmWindow.size
+                        val snapshot = pcmWindow.copyOf()
+                        liveTranscript = transcriber.transcribe(snapshot).ifBlank { liveTranscript }
+                    }
+                    if (_state.value is IncidentState.Active) {
+                        _state.value = IncidentState.Active(
+                            transcript = liveTranscript,
+                            phase = if (liveTranscript.isBlank()) AgentPhase.LISTENING else AgentPhase.TRANSCRIBING,
+                            elapsedMillis = elapsed(),
+                            isVoice = true,
+                        )
+                    }
                 }
             } catch (e: CancellationException) {
                 // Normal teardown (stopAndResolve/cancel). MUST be rethrown, not
@@ -120,7 +136,10 @@ class IncidentEngine(
     // ── Text path — equal citizen, just skips STT ───────────────────────────
 
     fun submitTypedQuery(rawText: String) {
-        if (_state.value !is IncidentState.Idle) return
+        // Follow-up allowed from Idle or any result screen; never mid-Active.
+        if (_state.value is IncidentState.Active) return
+        captureJob?.cancel()
+        captureJob = null
         startedAt = clock()
         sessionIsVoice = false
         scope.launch { resolve(rawText) }
@@ -144,6 +163,7 @@ class IncidentEngine(
                     val language = preferredLanguage() ?: query.language
                     val directive = translate(result.primary, language)
                     val shield = IncidentState.Shield(
+                        query = query.text,
                         directive = directive,
                         citation = result.primary,
                         related = result.related,
@@ -183,6 +203,9 @@ class IncidentEngine(
     companion object {
         /** Incident capture cap; past this we resolve with what we have. */
         const val MAX_CAPTURE_MILLIS = 60_000L
+
+        /** Re-decode for the live transcript after ~2.5 s of fresh audio. */
+        private const val LIVE_DECODE_SAMPLES = (2.5 * 16_000).toInt()
 
         private const val MAX_HISTORY = 20
     }

@@ -20,6 +20,7 @@ class PromptContractTest {
             "to him full particulars of the offence for which he is arrested.",
         verbatimTextHi = "गिरफ्तार करने वाला प्रत्येक पुलिस अधिकारी उस व्यक्ति को अपराध की पूरी जानकारी तुरंत बताएगा।",
         sourceDocument = "BNSS_2023_Gazette.pdf",
+        sourceUrl = "https://www.indiacode.nic.in/handle/123456789/21419",
         compilationDate = "2026-05-01",
     )
 

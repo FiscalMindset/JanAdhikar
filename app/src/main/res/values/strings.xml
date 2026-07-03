@@ -43,7 +43,15 @@
     <string name="superseded_redirect">Updated to the law currently in force</string>
 
     <!-- Resolution: actions -->
-    <string name="done">DONE</string>
+    <string name="done">Done</string>
+    <string name="ask_followup">Ask another question…</string>
+    <string name="details">Details</string>
+    <string name="detail_model">Model</string>
+    <string name="detail_time">Generation time</string>
+    <string name="detail_tokens">Tokens</string>
+    <string name="detail_confidence">Match confidence</string>
+    <string name="detail_embedder">Search model</string>
+    <string name="detail_source_url">Source link</string>
     <string name="mic_error">Microphone unavailable. You can still type your situation.</string>
 
     <!-- SOS -->

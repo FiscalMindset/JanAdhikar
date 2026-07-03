@@ -27,6 +27,8 @@ data class StatuteChunkEntity(
     @ColumnInfo(name = "source_document") val sourceDocument: String,
     @ColumnInfo(name = "source_sha256") val sourceSha256: String,
     @ColumnInfo(name = "compilation_date") val compilationDate: String,
+    /** Official URL of the source document, so the citizen can verify it. */
+    @ColumnInfo(name = "source_url", defaultValue = "") val sourceUrl: String = "",
 )
 
 /** Cognee entity node, flattened (STATUTE | SECTION | CLAUSE | RIGHT | AUTHORITY). */

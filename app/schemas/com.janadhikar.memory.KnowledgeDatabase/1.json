@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "ee4b906a6dc66c7dafd83d267d5f8340",
+    "identityHash": "fc675b8f6df0304f24d174a0e44710f6",
     "entities": [
       {
         "tableName": "statute_chunks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `node_id` INTEGER NOT NULL, `statute_name` TEXT NOT NULL, `statute_name_hi` TEXT NOT NULL, `unit` TEXT NOT NULL DEFAULT 'SECTION', `section_number` TEXT NOT NULL, `clause` TEXT, `page_number` INTEGER NOT NULL, `chunk_text_en` TEXT NOT NULL, `chunk_text_hi` TEXT NOT NULL, `source_document` TEXT NOT NULL, `source_sha256` TEXT NOT NULL, `compilation_date` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `node_id` INTEGER NOT NULL, `statute_name` TEXT NOT NULL, `statute_name_hi` TEXT NOT NULL, `unit` TEXT NOT NULL DEFAULT 'SECTION', `section_number` TEXT NOT NULL, `clause` TEXT, `page_number` INTEGER NOT NULL, `chunk_text_en` TEXT NOT NULL, `chunk_text_hi` TEXT NOT NULL, `source_document` TEXT NOT NULL, `source_sha256` TEXT NOT NULL, `compilation_date` TEXT NOT NULL, `source_url` TEXT NOT NULL DEFAULT '', PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -86,6 +86,13 @@
             "columnName": "compilation_date",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "sourceUrl",
+            "columnName": "source_url",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
           }
         ],
         "primaryKey": {
@@ -215,7 +222,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ee4b906a6dc66c7dafd83d267d5f8340')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fc675b8f6df0304f24d174a0e44710f6')"
     ]
   }
 }

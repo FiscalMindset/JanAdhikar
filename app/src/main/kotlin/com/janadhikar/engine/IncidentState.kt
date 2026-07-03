@@ -38,6 +38,8 @@ sealed interface IncidentState {
 
     /** Resolution — verified match. The Legal Shield. */
     data class Shield(
+        /** The user's question that produced this result (shown chat-style). */
+        val query: String,
         val directive: Directive,
         val citation: VerifiedCitation,
         val related: List<VerifiedCitation>,

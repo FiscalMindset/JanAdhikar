@@ -10,7 +10,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.io.Closeable
 import java.io.File
 
-/** What the Resolution screen renders as the big yellow directive. */
+/** What the Resolution screen renders as the directive, plus generation metadata. */
 data class Directive(
     val text: String,
     val language: AppLanguage,
@@ -20,7 +20,17 @@ data class Directive(
      * The shield NEVER fails open — worst case, it shows the raw law.
      */
     val isVerbatimFallback: Boolean,
-)
+    /** Which engine produced [text] — an LLM id, or "verbatim (database)". */
+    val modelId: String = VERBATIM_MODEL_ID,
+    /** Wall-clock generation time in ms (0 for a verbatim passthrough). */
+    val generationMillis: Long = 0,
+    /** Approximate token count of [text] (~1 token per 4 chars). */
+    val approxTokens: Int = text.length / 4,
+) {
+    companion object {
+        const val VERBATIM_MODEL_ID = "verbatim (database)"
+    }
+}
 
 /**
  * Gemma 3 (4-bit, LiteRT via MediaPipe GenAI) in its ONLY permitted role:
@@ -48,13 +58,21 @@ class GemmaTranslator(
             val verbatim = VerbatimStatuteText.from(citation, output)
             val prompt = PromptContract.build(verbatim, output)
 
+            val startedAt = System.currentTimeMillis()
             val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) {
                 llm.generateResponse(prompt)
             }
+            val elapsed = System.currentTimeMillis() - startedAt
 
             when (val verdict = raw?.let(OutputSanitizer::inspect)) {
-                is OutputSanitizer.Verdict.Clean ->
-                    Directive(verdict.text, output, isVerbatimFallback = false)
+                is OutputSanitizer.Verdict.Clean -> Directive(
+                    text = verdict.text,
+                    language = output,
+                    isVerbatimFallback = false,
+                    modelId = MODEL_ID,
+                    generationMillis = elapsed,
+                    approxTokens = verdict.text.length / 4,
+                )
                 // Leak, unusable output, or timeout → verbatim DB text. Always safe.
                 else -> Directive(verbatim.value, output, isVerbatimFallback = true)
             }
@@ -64,6 +82,7 @@ class GemmaTranslator(
 
     companion object {
         const val MODEL_ASSET = "models/gemma3-1b-it-int4.task"
+        const val MODEL_ID = "Gemma 3 1B (4-bit, LiteRT)"
 
         /** Directive budget is ~25 words; 96 tokens is generous headroom. */
         private const val MAX_TOKENS = 96

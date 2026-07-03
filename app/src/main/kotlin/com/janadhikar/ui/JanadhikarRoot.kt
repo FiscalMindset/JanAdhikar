@@ -86,10 +86,12 @@ fun JanadhikarRoot(
                         shield = s,
                         sos = sos,
                         onDone = stack.engine::cancel,
+                        onSubmitText = stack.engine::submitTypedQuery,
                     )
                     IncidentState.NoStatute -> NoStatuteScreen(
                         sos = sos,
                         onDone = stack.engine::cancel,
+                        onSubmitText = stack.engine::submitTypedQuery,
                     )
                     is IncidentState.Failure -> {
                         // Mic/pipeline failure: back to Trigger with the text path
