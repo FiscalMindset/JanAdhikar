@@ -9,7 +9,7 @@
       "mode": "flow",
       "max_gap": 10,
       "expected_last_section": 395,
-      "source_url": "https://www.indiacode.nic.in/handle/123456789/19632"
+      "source_url": "https://cdnbbsr.s3waas.gov.in/s380537a945c7aaa788ccfcdf1b99b5d8f/uploads/2024/07/20240716890312078.pdf"
     },
     {
       "pdf": "corpus/bns_2023.pdf",
@@ -20,7 +20,7 @@
       "mode": "lines",
       "max_gap": 1,
       "expected_last_section": 358,
-      "source_url": "https://www.indiacode.nic.in/handle/123456789/20062"
+      "source_url": "https://www.indiacode.nic.in/bitstream/123456789/20062/1/a202345.pdf"
     },
     {
       "pdf": "corpus/bnss_2023.pdf",
@@ -31,7 +31,7 @@
       "mode": "lines",
       "max_gap": 1,
       "expected_last_section": 531,
-      "source_url": "https://www.indiacode.nic.in/handle/123456789/21419"
+      "source_url": "https://www.indiacode.nic.in/bitstream/123456789/21544/1/the_bharatiya_nagarik_suraksha_sanhita,_2023.pdf"
     },
     {
       "pdf": "corpus/bsa_2023.pdf",
@@ -42,7 +42,7 @@
       "mode": "lines",
       "max_gap": 1,
       "expected_last_section": 170,
-      "source_url": "https://www.indiacode.nic.in/handle/123456789/20063"
+      "source_url": "https://www.indiacode.nic.in/bitstream/123456789/20063/1/aa202347.pdf"
     },
     {
       "pdf": "corpus/motor_vehicles_1988.pdf",
@@ -53,7 +53,7 @@
       "mode": "lines",
       "max_gap": 3,
       "expected_last_section": 217,
-      "source_url": "https://www.indiacode.nic.in/handle/123456789/9460"
+      "source_url": "https://www.indiacode.nic.in/bitstream/123456789/9460/1/a1988-59.pdf"
     }
   ]
 }

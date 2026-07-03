@@ -112,32 +112,31 @@ fun CitationCard(
         ReceiptRow(stringResource(R.string.source_label), citation.sourceDocument, small = true)
         ReceiptRow(stringResource(R.string.compiled_label), citation.compilationDate, small = true)
 
-        // Look-up link, built PER PROVISION (not the generic act page) so it
-        // lands on THIS section/article. The app makes no network call —
-        // launching the browser is the user's own action.
+        // Official-source link: opens the actual Government PDF at THIS
+        // provision's page (#page=N). Official and section-specific — not a
+        // search. The app makes no network call; the browser is the user's own.
         val context = LocalContext.current
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = "🔗 " + stringResource(R.string.open_source) + " ($unitLabel ${citation.sectionNumber})",
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
-            color = Color(0xFF0B57D0),
-            modifier = Modifier
-                .clickable {
-                    val q = android.net.Uri.encode(
-                        "${citation.statuteName} $unitLabel ${citation.sectionNumber} bare act India",
-                    )
-                    runCatching {
-                        context.startActivity(
-                            android.content.Intent(
-                                android.content.Intent.ACTION_VIEW,
-                                android.net.Uri.parse("https://www.google.com/search?q=$q"),
-                            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
-                        )
+        if (citation.sourceUrl.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "📄 " + stringResource(R.string.open_source) + " (p.${citation.pageNumber})",
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
+                color = Color(0xFF0B57D0),
+                modifier = Modifier
+                    .clickable {
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse("${citation.sourceUrl}#page=${citation.pageNumber}"),
+                                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
                     }
-                }
-                .padding(vertical = 6.dp)
-                .testTag("source_link"),
-        )
+                    .padding(vertical = 6.dp)
+                    .testTag("source_link"),
+            )
+        }
     }
 }
 

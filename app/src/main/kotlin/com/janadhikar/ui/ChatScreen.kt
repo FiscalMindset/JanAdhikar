@@ -268,10 +268,52 @@ private fun GroundedAnswer(a: Answer.Grounded) {
             Spacer(Modifier.size(6.dp))
             Text("↻ " + stringResource(R.string.superseded_redirect), style = MaterialTheme.typography.bodyMedium, color = Palette.TickerGreen)
         }
-        Spacer(Modifier.size(10.dp))
-        a.citations.forEach { citation ->
-            CitationCard(citation = citation, language = a.explanation.language)
-            Spacer(Modifier.size(8.dp))
+        // Citations come AFTER the answer, and only once it is complete — the
+        // "verified record" should support the answer, not precede it.
+        if (!a.streaming) {
+            Spacer(Modifier.size(12.dp))
+            Text(
+                text = stringResource(R.string.based_on).uppercase(),
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 11.sp, letterSpacing = 1.sp),
+                color = Palette.DimGray,
+            )
+            Spacer(Modifier.size(6.dp))
+            a.citations.forEach { citation ->
+                CitationCard(citation = citation, language = a.explanation.language)
+                Spacer(Modifier.size(8.dp))
+            }
+            MetaBlock(a)
+        }
+    }
+}
+
+/** Full metadata: model, section, confidence, time, tokens, language. */
+@Composable
+private fun MetaBlock(a: Answer.Grounded) {
+    val primary = a.citations.firstOrNull()
+    val rows = buildList {
+        add("Answer engine" to a.explanation.modelId)
+        primary?.let {
+            val unit = if (it.unit == "ARTICLE") "Article" else "Section"
+            add("Primary provision" to "${it.statuteName.substringBefore(",")} · $unit ${it.sectionNumber} · p.${it.pageNumber}")
+        }
+        add("Provisions cited" to a.citations.size.toString())
+        add("Match confidence" to "%.0f%%".format(a.confidence * 100))
+        if (a.explanation.generationMillis > 0) add("Generation time" to "${a.explanation.generationMillis} ms")
+        if (a.explanation.approxTokens > 0) add("Approx. tokens" to a.explanation.approxTokens.toString())
+        add("Language" to if (a.explanation.language == AppLanguage.HINDI) "Hindi" else "English")
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Palette.Black, RoundedCornerShape(8.dp))
+            .padding(10.dp),
+    ) {
+        rows.forEach { (k, v) ->
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
+                Text(k, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 11.sp), color = Palette.DimGray, modifier = Modifier.width(120.dp))
+                Text(v, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 11.sp), color = Palette.DimGray.copy(alpha = 0.85f), modifier = Modifier.weight(1f))
+            }
         }
     }
 }
