@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.janadhikar.engine.CaptureState
 import com.janadhikar.engine.IncidentPipelineService
+import com.janadhikar.engine.EdgeStack
 import com.janadhikar.ui.JanadhikarRoot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collectLatest
@@ -82,6 +83,24 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestVoice() {
+        // If the voice model is still downloading (fresh install), tell the user
+        // with the % instead of silently doing nothing.
+        val stack = app.edgeStack
+        val dl = stack?.voiceProgress?.value
+        if (stack != null && dl != null) {
+            android.widget.Toast.makeText(
+                this, "Downloading voice model… $dl% — try the mic again shortly.",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+        if (stack != null && stack.status.value.voice == EdgeStack.ModelStatus.UNAVAILABLE) {
+            android.widget.Toast.makeText(
+                this, "Voice needs internet once to download. Connect and reopen. You can type meanwhile.",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
         val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
         if (granted) startVoice() else micPermission.launch(Manifest.permission.RECORD_AUDIO)

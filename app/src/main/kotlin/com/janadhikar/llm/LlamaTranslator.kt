@@ -12,9 +12,11 @@ import java.io.File
  * — but a much stronger multilingual model, so Hindi answers are usable. Runs a
  * local GGUF fully offline. Non-streaming: [onDelta] fires once with the result.
  */
-class LlamaTranslator private constructor(private val llama: LlamaBridge) : Closeable {
+class LlamaTranslator private constructor(
+    private val llama: LlamaBridge,
+    val modelLabel: String,
+) : Closeable {
 
-    val modelLabel: String = LlamaBridge.MODEL_ID
     private val meaningLabel: String = "$modelLabel — plain meaning"
 
     suspend fun translate(citation: VerifiedCitation, output: AppLanguage): Directive =
@@ -97,6 +99,6 @@ class LlamaTranslator private constructor(private val llama: LlamaBridge) : Clos
         private const val MAX_NEW_TOKENS = 300
 
         fun open(modelFile: File): LlamaTranslator? =
-            LlamaBridge.open(modelFile)?.let { LlamaTranslator(it) }
+            LlamaBridge.open(modelFile)?.let { LlamaTranslator(it, LlamaBridge.modelIdForFile(modelFile.name)) }
     }
 }

@@ -63,14 +63,20 @@ fun SettingsScreen(
             item {
                 SectionLabel("Answer model")
                 ModelChoiceRow(
-                    title = "Qwen 2.5 1.5B  ·  best for Hindi",
-                    subtitle = "Downloads once (~1 GB). Strong multilingual. Slower on old phones.",
+                    title = "⚡ Fast  ·  Qwen 2.5 0.5B",
+                    subtitle = "Quick even on budget phones. Small download (~350 MB). Best for testing.",
+                    selected = currentModel == com.janadhikar.engine.ModelPreference.Choice.QWEN_SMALL,
+                    onClick = { onSelectModel(com.janadhikar.engine.ModelPreference.Choice.QWEN_SMALL) },
+                )
+                ModelChoiceRow(
+                    title = "Balanced  ·  Qwen 2.5 1.5B",
+                    subtitle = "Best Hindi & richest answers (~1 GB). Slower on old CPUs.",
                     selected = currentModel == com.janadhikar.engine.ModelPreference.Choice.QWEN,
                     onClick = { onSelectModel(com.janadhikar.engine.ModelPreference.Choice.QWEN) },
                 )
                 ModelChoiceRow(
-                    title = "Gemma 3 (1B / 4B)  ·  faster",
-                    subtitle = "Hardware-accelerated, quicker on low-end CPUs. Needs the .task file.",
+                    title = "Gemma 3 (1B / 4B)  ·  accelerated",
+                    subtitle = "Hardware-accelerated, quick on low-end CPUs. Needs the .task file.",
                     selected = currentModel == com.janadhikar.engine.ModelPreference.Choice.GEMMA,
                     onClick = { onSelectModel(com.janadhikar.engine.ModelPreference.Choice.GEMMA) },
                 )

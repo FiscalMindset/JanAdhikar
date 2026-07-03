@@ -35,6 +35,13 @@ class LlamaBridge private constructor(private var handle: Long) : Closeable {
         const val MODEL_ID = "Qwen 2.5 1.5B (Q4, llama.cpp)"
         private const val N_CTX = 2048
 
+        /** Human label for whichever GGUF loaded (0.5B fast vs 1.5B). */
+        fun modelIdForFile(name: String): String = when {
+            name.contains("0.5b", true) -> "Qwen 2.5 0.5B (Q4, fast)"
+            name.contains("1.5b", true) -> "Qwen 2.5 1.5B (Q4, llama.cpp)"
+            else -> "Qwen (llama.cpp)"
+        }
+
         init { System.loadLibrary("janadhikar_llama") }
 
         /** Loads the model; returns null if it fails (caller falls back). */

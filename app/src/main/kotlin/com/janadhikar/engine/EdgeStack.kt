@@ -43,6 +43,8 @@ class EdgeStack private constructor(
     val engine: ChatEngine,
     /** Live status of each on-device component, for the status row. */
     val status: StateFlow<Status>,
+    /** Voice-model download progress %, or null when ready/not downloading. */
+    val voiceProgress: StateFlow<Int?>,
     private val closeables: List<Closeable>,
     private val lazyCloseables: List<Deferred<Closeable?>>,
     private val scope: CoroutineScope,
@@ -124,24 +126,35 @@ class EdgeStack private constructor(
 
             // ── Voice model + LLM: OFF the critical path. Start loading now in
             //    the background; the engine awaits them only when actually used.
+            // Voice-model download progress, shown when the user taps the mic
+            // before whisper is ready (null = ready / not downloading).
+            val voiceProgress = MutableStateFlow<Int?>(null)
             val whisperDeferred: Deferred<WhisperBridge?> = scope.async {
                 runCatching {
-                    // Pushed (dev) → use it; else download the public model once so
-                    // voice works on a link-shared APK too. Voice degrades to
-                    // text-only if the download fails.
                     val ext = context.getExternalFilesDir("models")
-                    val pushed = ext?.let { File(it, "ggml-small-q5_1.bin") }
-                    val file = if (pushed != null && pushed.exists() && pushed.length() > 0) pushed
-                    else ext?.let { ModelDownloader.ensure(ModelDownloader.WHISPER_URL, File(it, "ggml-small-q5_1.bin")) {} }
+                    val f = ext?.let { File(it, "ggml-small-q5_1.bin") }
+                    val file = when {
+                        f != null && f.exists() && f.length() > 0 -> f
+                        f != null -> {
+                            voiceProgress.value = 0
+                            ModelDownloader.ensure(ModelDownloader.WHISPER_URL, f) { p ->
+                                voiceProgress.value = p.percent
+                            }
+                        }
+                        else -> null
+                    }
+                    voiceProgress.value = null
                     file?.let { WhisperBridge.open(it) }
-                }.getOrNull()
+                }.getOrNull().also { voiceProgress.value = null }
             }
             // Answer model. Default: Qwen 2.5 1.5B (llama.cpp) — stronger
             // multilingual (usable Hindi) AND ungated, so it can be auto-
             // DOWNLOADED on first run (a link-shared APK has no adb). If the user
             // picked Gemma (and pushed its gated .task) we use that instead.
-            val useGemma = ModelPreference.isGemma(context) && provisionGemmaOrNull(context) != null
-            val qwenFile = if (useGemma) null else provisionQwen(context, onProgress)
+            val choice = ModelPreference.get(context)
+            val useGemma = choice == ModelPreference.Choice.GEMMA && provisionGemmaOrNull(context) != null
+            val qwenFile = if (useGemma) null
+                else provisionQwen(context, onProgress, small = choice == ModelPreference.Choice.QWEN_SMALL)
             val llamaDeferred: Deferred<LlamaTranslator?> = scope.async {
                 qwenFile?.let { runCatching { LlamaTranslator.open(it)?.also { t -> t.warmUp() } }.getOrNull() }
             }
@@ -221,6 +234,7 @@ class EdgeStack private constructor(
             EdgeStack(
                 engine = engine,
                 status = status.asStateFlow(),
+                voiceProgress = voiceProgress.asStateFlow(),
                 closeables = listOf(embedder, vec, Closeable { db.close() }),
                 lazyCloseables = listOf(whisperDeferred, gemmaDeferred),
                 scope = scope,
@@ -236,12 +250,13 @@ class EdgeStack private constructor(
          * (ungated) HF URL with progress reported to the warm-up screen. Returns
          * null only if the download fails (caller falls back to Gemma/verbatim).
          */
-        private suspend fun provisionQwen(context: Context, onProgress: (String) -> Unit): File? {
+        private suspend fun provisionQwen(context: Context, onProgress: (String) -> Unit, small: Boolean): File? {
             val ext = context.getExternalFilesDir("models") ?: return null
-            val target = File(ext, LlamaBridge.MODEL_ASSET.substringAfterLast('/'))
+            val url = if (small) ModelDownloader.QWEN_SMALL_URL else ModelDownloader.QWEN_URL
+            val target = File(ext, url.substringAfterLast('/'))
             if (target.exists() && target.length() > 0) return target
             onProgress("Downloading AI model (one-time)…")
-            return ModelDownloader.ensure(ModelDownloader.QWEN_URL, target) { p ->
+            return ModelDownloader.ensure(url, target) { p ->
                 val mb = { b: Long -> b / (1024 * 1024) }
                 onProgress("Downloading AI model… ${p.percent}%  (${mb(p.downloadedBytes)}/${mb(p.totalBytes)} MB)")
             }

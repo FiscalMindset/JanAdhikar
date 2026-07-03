@@ -16,9 +16,13 @@ import java.net.URL
  */
 object ModelDownloader {
 
-    /** Ungated public GGUF — no token, no license wall. */
+    /** Ungated public GGUFs — no token, no license wall. */
     const val QWEN_URL =
         "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+
+    /** The small, FAST model — quick even on budget CPUs (~350 MB). */
+    const val QWEN_SMALL_URL =
+        "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
 
     /** Public whisper small (multilingual, q5) — for voice input. */
     const val WHISPER_URL =
