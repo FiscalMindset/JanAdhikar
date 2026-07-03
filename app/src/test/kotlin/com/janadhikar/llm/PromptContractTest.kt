@@ -69,17 +69,22 @@ class PromptContractTest {
         // Structural guard (Rule 1): PromptContract exposes exactly one public
         // function; its only dynamic parameter type is VerbatimStatuteText,
         // which is constructible solely from a VerifiedCitation.
-        val functions = PromptContract::class.declaredFunctions
-        assertThat(functions.map { it.name }).containsExactly("build")
-        val params = functions.single().parameters.drop(1) // drop receiver
-        // VerbatimStatuteText is the ONLY free-text injection point. AppLanguage
-        // and Style are closed types (enums / a fixed set) — no user string can
-        // reach the prompt through them, so Rule 1 still holds.
-        assertThat(params.map { it.type.toString() }).containsExactly(
-            "com.janadhikar.llm.VerbatimStatuteText",
-            "com.janadhikar.input.AppLanguage",
-            "com.janadhikar.llm.PromptContract.Style",
-        )
-        assertThat(params.count { it.type.toString().contains("String") }).isEqualTo(0)
+        // The PUBLIC prompt builders (Gemma `build`, Qwen `buildChatML`) must
+        // each take VerbatimStatuteText as the ONLY free-text field; AppLanguage
+        // and Style are closed types. No public builder may take a raw String —
+        // that would be an uncontrolled injection point (Rule 1).
+        val publicBuilders = PromptContract::class.declaredFunctions
+            .filter { it.visibility == kotlin.reflect.KVisibility.PUBLIC }
+        assertThat(publicBuilders.map { it.name })
+            .containsExactly("build", "buildChatML")
+        publicBuilders.forEach { fn ->
+            val types = fn.parameters.drop(1).map { it.type.toString() }
+            assertThat(types).containsExactly(
+                "com.janadhikar.llm.VerbatimStatuteText",
+                "com.janadhikar.input.AppLanguage",
+                "com.janadhikar.llm.PromptContract.Style",
+            )
+            assertThat(types.count { it.contains("kotlin.String") }).isEqualTo(0)
+        }
     }
 }

@@ -4,3 +4,6 @@
 [submodule "external/sqlite-vec"]
 	path = external/sqlite-vec
 	url = https://github.com/asg017/sqlite-vec
+[submodule "external/llama.cpp"]
+	path = external/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp

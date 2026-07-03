@@ -50,8 +50,28 @@ object PromptContract {
             "कोई धारा संख्या, अधिनियम का नाम, पृष्ठ संख्या या उद्धरण न लिखें, न बनाएँ। " +
             "LEGAL TEXT से बाहर कोई सलाह या तथ्य न जोड़ें।"
 
-    fun build(verbatim: VerbatimStatuteText, output: AppLanguage, style: Style = Style.NORMAL): String {
-        val instruction = when (output) {
+    /** Gemma-format prompt (MediaPipe). */
+    fun build(verbatim: VerbatimStatuteText, output: AppLanguage, style: Style = Style.NORMAL): String =
+        buildString {
+            append("<start_of_turn>user\n")
+            append(instruction(output, style))
+            append("\n\nLEGAL TEXT:\n\"\"\"\n")
+            append(verbatim.value) // ← the single injection point
+            append("\n\"\"\"<end_of_turn>\n<start_of_turn>model\n")
+        }
+
+    /** Qwen ChatML-format prompt (llama.cpp). Same single injection point. */
+    fun buildChatML(verbatim: VerbatimStatuteText, output: AppLanguage, style: Style = Style.NORMAL): String =
+        buildString {
+            append("<|im_start|>system\n")
+            append(instruction(output, style))
+            append("<|im_end|>\n<|im_start|>user\nLEGAL TEXT:\n\"\"\"\n")
+            append(verbatim.value) // ← the single injection point
+            append("\n\"\"\"<|im_end|>\n<|im_start|>assistant\n")
+        }
+
+    private fun instruction(output: AppLanguage, style: Style): String {
+        return when (output) {
             AppLanguage.ENGLISH -> when (style) {
                 Style.NORMAL ->
                     "You are a helpful legal assistant explaining Indian law to an ordinary citizen " +
@@ -81,13 +101,6 @@ object PromptContract {
                         "रोज़मर्रा के आसान शब्दों में बताएँ — यह व्यक्ति के लिए क्या मायने रखता है और उसका मुख्य " +
                         "अधिकार या सज़ा क्या है। कोई शीर्षक, लेबल या अंग्रेज़ी न लिखें।" + RULES_HI
             }
-        }
-        return buildString {
-            append("<start_of_turn>user\n")
-            append(instruction)
-            append("\n\nLEGAL TEXT:\n\"\"\"\n")
-            append(verbatim.value) // ← the single injection point
-            append("\n\"\"\"<end_of_turn>\n<start_of_turn>model\n")
         }
     }
 }

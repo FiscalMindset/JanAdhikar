@@ -7,29 +7,27 @@ local.properties
 .idea/
 *.iml
 .DS_Store
-
 # Native
 .cxx/
-
 # Model artifacts — too large for git; fetched via scripts/fetch_models.sh
 # or produced by knowledge-pipeline/export_tflite.py
 app/src/main/assets/models/*.tflite
 app/src/main/assets/models/*.task
 app/src/main/assets/models/*.bin
 app/src/main/assets/models/spm_vocab.tsv
-
 # Knowledge-pipeline local state
 knowledge-pipeline/.venv/
 knowledge-pipeline/.venv-export/
 knowledge-pipeline/build/
 **/__pycache__/
-
 # Kotlin compiler session cache
 .kotlin/
-
 # Compiled knowledge base — built by knowledge-pipeline/, not hand-edited
 app/src/main/assets/db/*.db
-
 # Vendored submodule build outputs
 external/**/build/
 .env
+.env.*
+*.gguf
+app/src/main/assets/models/*.gguf
+app/src/main/assets/models/

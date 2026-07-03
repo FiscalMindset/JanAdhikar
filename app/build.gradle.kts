@@ -31,6 +31,10 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags += listOf("-std=c++17", "-O3", "-fvisibility=hidden")
+                // NOTE: do NOT force -march=armv8.2-a+dotprod/i8mm here. ggml
+                // detects CPU features at RUNTIME and picks dotprod kernels only
+                // if present. Forcing them at compile time SIGILLs on budget CPUs
+                // (Cortex-A53/A55 without asimddp), which this device has.
                 arguments += listOf(
                     "-DGGML_NATIVE=OFF",
                     "-DWHISPER_BUILD_TESTS=OFF",
@@ -91,7 +95,7 @@ android {
         // via scripts/push_models.sh (adb push) / on-first-run download and are
         // read from external storage (see EdgeStack.provisionAsset).
         // (No '!' prefix ⇒ these patterns are IGNORED/excluded from the APK.)
-        ignoreAssetsPattern = "*.tflite:*.bin:*.task"
+        ignoreAssetsPattern = "*.tflite:*.bin:*.task:*.gguf"
     }
 
     packaging {

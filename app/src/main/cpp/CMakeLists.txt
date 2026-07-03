@@ -14,12 +14,31 @@ project(janadhikar_native LANGUAGES C CXX)
 
 set(EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../external)
 
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+# ── 0. llama.cpp (on-device LLM) ──────────────────────────────────────────
+# Added BEFORE whisper.cpp so llama's ggml defines the shared `ggml` target;
+# whisper.cpp then reuses it (its CMake guards `if (NOT TARGET ggml)`), so the
+# two ggml-based libraries coexist without a duplicate-target collision.
+set(LLAMA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_SERVER OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_COMMON OFF CACHE BOOL "" FORCE)
+set(LLAMA_CURL OFF CACHE BOOL "" FORCE)
+set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
+add_subdirectory(${EXTERNAL_DIR}/llama.cpp llama_build)
+
+add_library(janadhikar_llama SHARED llama/llama_jni.cpp)
+target_include_directories(janadhikar_llama PRIVATE ${EXTERNAL_DIR}/llama.cpp/include)
+target_link_libraries(janadhikar_llama llama android log)
+target_link_options(janadhikar_llama PRIVATE "-Wl,-z,max-page-size=16384")
+
 # ── 1. whisper.cpp ────────────────────────────────────────────────────────
 # whisper.cpp ships its own CMake; we consume it as a static lib and wrap
 # it behind our JNI surface so no ggml symbols leak.
 set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 add_subdirectory(${EXTERNAL_DIR}/whisper.cpp whisper_build)
 
 add_library(janadhikar_whisper SHARED

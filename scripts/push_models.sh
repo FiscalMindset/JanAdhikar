@@ -24,13 +24,13 @@ echo "Device: $DEV"
 
 adb -s "$DEV" shell mkdir -p "$DEST"
 
-# gemma3-4b-it-int4.task is OPTIONAL — pushed only if present; the app prefers
+# gemma3-4b-it-int4-web.task is OPTIONAL — pushed only if present; the app prefers
 # it over the 1B automatically (more accurate, slower).
-for f in embedder_minilm_384.tflite ggml-small-q5_1.bin gemma3-1b-it-int4.task gemma3-4b-it-int4.task; do
+for f in embedder_minilm_384.tflite ggml-small-q5_1.bin gemma3-1b-it-int4.task gemma3-4b-it-int4-web.task qwen2.5-1.5b-instruct-q4_k_m.gguf; do
     if [[ -f "$SRC/$f" ]]; then
         echo "→ pushing $f ($(du -h "$SRC/$f" | cut -f1))…"
         adb -s "$DEV" push "$SRC/$f" "$DEST/$f"
-    elif [[ "$f" == "gemma3-4b-it-int4.task" ]]; then
+    elif [[ "$f" == "gemma3-4b-it-int4-web.task" ]]; then
         : # optional, silently skip
     else
         echo "! missing $SRC/$f (fetch it first: scripts/fetch_models.sh / export_tflite.py)"

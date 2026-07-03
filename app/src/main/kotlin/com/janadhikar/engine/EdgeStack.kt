@@ -3,6 +3,8 @@ package com.janadhikar.engine
 import android.content.Context
 import com.janadhikar.llm.Directive
 import com.janadhikar.llm.GemmaTranslator
+import com.janadhikar.llm.LlamaBridge
+import com.janadhikar.llm.LlamaTranslator
 import com.janadhikar.llm.VerbatimStatuteText
 import com.janadhikar.memory.HybridRetriever
 import com.janadhikar.memory.KnowledgeBaseProvisioner
@@ -126,12 +128,16 @@ class EdgeStack private constructor(
                     WhisperBridge.open(provisionAsset(context, WHISPER_MODEL_ASSET))
                 }.getOrNull()
             }
-            // Gemma is license-gated (see scripts/fetch_models.sh). Without it,
-            // directives fall back to verbatim statute text — always safe.
+            // Answer model. Prefer Qwen 2.5 1.5B (llama.cpp) if its GGUF was
+            // pushed — a much stronger multilingual model (usable Hindi), and
+            // ungated. Else fall back to Gemma (license-gated); else verbatim.
+            val qwenFile = provisionQwenOrNull(context)
+            val llamaDeferred: Deferred<LlamaTranslator?> = scope.async {
+                qwenFile?.let { runCatching { LlamaTranslator.open(it)?.also { t -> t.warmUp() } }.getOrNull() }
+            }
             val gemmaDeferred: Deferred<GemmaTranslator?> = scope.async {
-                runCatching {
-                    GemmaTranslator(context, provisionGemma(context))
-                        .also { it.warmUp() } // build the weight cache before first use
+                if (qwenFile != null) null else runCatching {
+                    GemmaTranslator(context, provisionGemma(context)).also { it.warmUp() }
                 }.getOrNull()
             }
 
@@ -144,7 +150,7 @@ class EdgeStack private constructor(
                 )
             }
             scope.launch {
-                val ok = gemmaDeferred.await() != null
+                val ok = llamaDeferred.await() != null || gemmaDeferred.await() != null
                 status.value = status.value.copy(
                     translator = if (ok) ModelStatus.READY else ModelStatus.UNAVAILABLE,
                 )
@@ -178,21 +184,19 @@ class EdgeStack private constructor(
                 },
                 retrieve = { query -> retriever.retrieve(query.text) },
                 translate = { citation, language, onDelta ->
-                    gemmaDeferred.await()?.translate(citation, language, onDelta) ?: Directive(
-                        text = VerbatimStatuteText.from(citation, language).value,
-                        language = language,
-                        isVerbatimFallback = true,
-                    )
+                    llamaDeferred.await()?.translate(citation, language, onDelta)
+                        ?: gemmaDeferred.await()?.translate(citation, language, onDelta)
+                        ?: Directive(VerbatimStatuteText.from(citation, language).value, language, true)
                 },
                 define = { phrase, language, onDelta ->
-                    gemmaDeferred.await()?.define(phrase, language, onDelta)
+                    llamaDeferred.await()?.define(phrase, language, onDelta)
+                        ?: gemmaDeferred.await()?.define(phrase, language, onDelta)
                         ?: Directive("The AI model is not available to explain words.", language, false)
                 },
                 reexplain = { citation, language, style, onDelta ->
-                    gemmaDeferred.await()?.translate(citation, language, style, onDelta) ?: Directive(
-                        text = VerbatimStatuteText.from(citation, language).value,
-                        language = language, isVerbatimFallback = true,
-                    )
+                    llamaDeferred.await()?.translate(citation, language, style, onDelta)
+                        ?: gemmaDeferred.await()?.translate(citation, language, style, onDelta)
+                        ?: Directive(VerbatimStatuteText.from(citation, language).value, language, true)
                 },
                 corpusStats = { CorpusSummary.build(db.dao().provisionCounts()) },
                 clock = System::currentTimeMillis,
@@ -213,10 +217,26 @@ class EdgeStack private constructor(
          * Prefer the bigger, more accurate Gemma 3 4B if the user pushed it
          * (much better answers, but slower); otherwise the default 1B.
          */
+        /**
+         * The pushed Qwen GGUF, but ONLY if the user opted in with a marker file
+         * (models/use_qwen.flag). Qwen 2.5 1.5B is more accurate (esp. Hindi) but
+         * runs on the CPU via llama.cpp — fast on phones with dot-product support,
+         * but slow (~minutes) on budget CPUs that lack it. So Gemma (MediaPipe,
+         * hardware-accelerated) stays the DEFAULT; Qwen is a deliberate opt-in.
+         */
+        private fun provisionQwenOrNull(context: Context): File? {
+            val ext = context.getExternalFilesDir("models") ?: return null
+            if (!File(ext, "use_qwen.flag").exists()) return null
+            val f = File(ext, LlamaBridge.MODEL_ASSET.substringAfterLast('/'))
+            return if (f.exists() && f.length() > 0) f else null
+        }
+
         private fun provisionGemma(context: Context): File {
             context.getExternalFilesDir("models")?.let { ext ->
-                val fourB = File(ext, "gemma3-4b-it-int4.task")
-                if (fourB.exists() && fourB.length() > 0) return fourB
+                // Any pushed Gemma 3 4B .task (litert-community names it *-web).
+                ext.listFiles()
+                    ?.firstOrNull { it.name.contains("4b", true) && it.extension == "task" && it.length() > 0 }
+                    ?.let { return it }
             }
             return provisionAsset(context, GemmaTranslator.MODEL_ASSET)
         }
