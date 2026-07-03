@@ -37,6 +37,7 @@ Java_com_janadhikar_llm_LlamaBridge_nativeLoad(
     cp.n_ctx = (uint32_t) nCtx;
     cp.n_threads = nThreads;
     cp.n_threads_batch = nThreads;
+    cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED; // faster attention on ARM
     llama_context *ctx = llama_init_from_model(model, cp);
     if (!ctx) { LOGE("ctx init failed"); llama_model_free(model); return 0; }
 

@@ -16,13 +16,14 @@ import java.net.URL
  */
 object ModelDownloader {
 
-    /** Ungated public GGUFs — no token, no license wall. */
+    // Q4_0 GGUFs — llama.cpp repacks Q4_0 into Q4_0_8_8/4_8 blocks on ARM, using
+    // dot-product kernels that are 2-3× faster than Q4_K_M for phone inference.
     const val QWEN_URL =
-        "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+        "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_0.gguf"
 
-    /** The small, FAST model — quick even on budget CPUs (~350 MB). */
+    /** The small, FAST model — quick even on budget CPUs. */
     const val QWEN_SMALL_URL =
-        "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
+        "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf"
 
     /** Public whisper small (multilingual, q5) — for voice input. */
     const val WHISPER_URL =

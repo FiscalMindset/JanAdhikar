@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -81,6 +82,7 @@ class ChatEngine(
     private var nextId = (_conversation.value.maxOfOrNull { it.id } ?: -1L) + 1L
     private var sessionSeq = (_sessions.value.maxOfOrNull { it.id } ?: 0L) + 1L
     private var captureJob: Job? = null
+    private var liveJob: Job? = null
     private var pcmWindow = FloatArray(0)
     private var startedAt = 0L
 
@@ -321,17 +323,17 @@ class ChatEngine(
         if (_capture.value is CaptureState.Recording) return
         startedAt = clock()
         pcmWindow = FloatArray(0)
-        _capture.value = CaptureState.Recording("", 0L)
-        // Capture on IO so the mic loop is NEVER starved by LLM generation (which
-        // runs on Default). We do NOT transcribe mid-recording — that blocked the
-        // loop and froze the timer at ~2s; the transcript is produced once on stop.
+        _capture.value = CaptureState.Recording("🎙 Listening…", 0L)
+        // Audio capture runs on IO so the mic loop (and the timer) is NEVER
+        // starved by LLM generation on Default. It ONLY accumulates audio and
+        // advances the timer — it never blocks on transcription.
         captureJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 audioSource.stream().collect { chunk ->
                     pcmWindow += chunk
                     if (elapsed() >= MAX_CAPTURE_MILLIS) { stopVoice(); return@collect }
-                    if (_capture.value is CaptureState.Recording) {
-                        _capture.value = CaptureState.Recording("🎙 recording…", elapsed())
+                    (_capture.value as? CaptureState.Recording)?.let {
+                        _capture.value = it.copy(elapsedMillis = elapsed())
                     }
                 }
             } catch (e: CancellationException) {
@@ -342,6 +344,22 @@ class ChatEngine(
                 _capture.value = CaptureState.Idle
             }
         }
+        // LIVE transcription in a SEPARATE coroutine (never blocks the timer):
+        // every ~1.5s it transcribes what's been captured so far and shows it.
+        liveJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            while (isActive && _capture.value is CaptureState.Recording) {
+                kotlinx.coroutines.delay(1500)
+                val snapshot = pcmWindow
+                if (snapshot.size >= LIVE_DECODE_SAMPLES) {
+                    val text = runCatching { transcriber.transcribe(snapshot.copyOf()) }.getOrDefault("")
+                    if (text.isNotBlank()) {
+                        (_capture.value as? CaptureState.Recording)?.let {
+                            _capture.value = it.copy(transcript = text)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /** User finished speaking: final decode, then ask the transcript. */
@@ -349,6 +367,7 @@ class ChatEngine(
         if (_capture.value !is CaptureState.Recording) return
         val job = captureJob
         captureJob = null
+        liveJob?.cancel(); liveJob = null
         scope.launch {
             job?.cancelAndJoin()
             val transcript = if (pcmWindow.isNotEmpty()) transcriber.transcribe(pcmWindow) else ""
@@ -361,6 +380,7 @@ class ChatEngine(
     fun cancelVoice() {
         captureJob?.cancel()
         captureJob = null
+        liveJob?.cancel(); liveJob = null
         pcmWindow = FloatArray(0)
         _capture.value = CaptureState.Idle
     }
