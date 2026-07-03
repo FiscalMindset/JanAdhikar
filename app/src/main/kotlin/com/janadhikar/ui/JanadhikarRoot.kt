@@ -99,10 +99,12 @@ fun JanadhikarRoot(
                     return@Box
                 }
 
+                val modelPct by stack.modelProgress.collectAsState()
                 ProvideMeaningToolbar(onExplain = stack.engine::explainSelection) {
                     ChatScreen(
                         turns = turns,
                         engineReady = true,
+                        modelDownloadPercent = modelPct,
                         onAsk = stack.engine::ask,
                         onMic = onVoiceRequested,
                         onSettings = { showSettings = true },

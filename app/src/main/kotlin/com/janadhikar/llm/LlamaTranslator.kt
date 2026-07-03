@@ -59,7 +59,7 @@ class LlamaTranslator private constructor(
         val combined = VerbatimStatuteText.combined(citations, output)
         val prompt = PromptContract.buildSynthesisChatML(combined, output)
         val startedAt = System.currentTimeMillis()
-        val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) { llama.generate(prompt, 260) }
+        val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) { llama.generate(prompt, 200) }
         val elapsed = System.currentTimeMillis() - startedAt
         return (raw?.let(OutputSanitizer::inspect) as? OutputSanitizer.Verdict.Clean)?.let {
             onDelta(it.text)

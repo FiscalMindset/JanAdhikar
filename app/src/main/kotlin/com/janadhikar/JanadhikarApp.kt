@@ -47,14 +47,13 @@ class JanadhikarApp : Application() {
                     EdgeStack.create(this@JanadhikarApp) { stage -> _warmupStage.value = stage }
                 }
             } catch (t: TimeoutCancellationException) {
-                _warmupError.value = "Startup timed out. The search model may be missing — " +
-                    "run ./scripts/push_models.sh, then reopen."
+                _warmupError.value = "Taking longer than usual to start. Please reopen the app."
                 Log.e(TAG, "Edge stack warm-up timed out", t)
             } catch (t: Throwable) {
                 // A broken/incomplete install must present as "engine won't
                 // start", never as a crash loop or an endless spinner.
                 Log.e(TAG, "Edge stack failed to start", t)
-                _warmupError.value = t.message ?: t.javaClass.simpleName
+                _warmupError.value = "Could not start. Please check your storage/connection and reopen."
             }
         }
     }

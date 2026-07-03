@@ -45,6 +45,8 @@ class EdgeStack private constructor(
     val status: StateFlow<Status>,
     /** Voice-model download progress %, or null when ready/not downloading. */
     val voiceProgress: StateFlow<Int?>,
+    /** Answer-model download progress %, or null when ready/not downloading. */
+    val modelProgress: StateFlow<Int?>,
     private val closeables: List<Closeable>,
     private val lazyCloseables: List<Deferred<Closeable?>>,
     private val scope: CoroutineScope,
@@ -153,10 +155,18 @@ class EdgeStack private constructor(
             // picked Gemma (and pushed its gated .task) we use that instead.
             val choice = ModelPreference.get(context)
             val useGemma = choice == ModelPreference.Choice.GEMMA && provisionGemmaOrNull(context) != null
-            val qwenFile = if (useGemma) null
-                else provisionQwen(context, onProgress, small = choice == ModelPreference.Choice.QWEN_SMALL)
+            // Answer-model DOWNLOAD + load happen fully in the BACKGROUND so the
+            // app is usable instantly — create() never blocks on the ~400 MB-1 GB
+            // download (that caused the startup timeout). The chat screen shows
+            // the download % via [modelProgress]; a query waits only for the model.
+            val modelProgress = MutableStateFlow<Int?>(null)
             val llamaDeferred: Deferred<LlamaTranslator?> = scope.async {
-                qwenFile?.let { runCatching { LlamaTranslator.open(it)?.also { t -> t.warmUp() } }.getOrNull() }
+                if (useGemma) return@async null
+                val f = provisionQwen(context, small = choice == ModelPreference.Choice.QWEN_SMALL) { pct ->
+                    modelProgress.value = pct
+                }
+                modelProgress.value = null
+                f?.let { runCatching { LlamaTranslator.open(it)?.also { t -> t.warmUp() } }.getOrNull() }
             }
             val gemmaDeferred: Deferred<GemmaTranslator?> = scope.async {
                 if (!useGemma) null else runCatching {
@@ -235,6 +245,7 @@ class EdgeStack private constructor(
                 engine = engine,
                 status = status.asStateFlow(),
                 voiceProgress = voiceProgress.asStateFlow(),
+                modelProgress = modelProgress.asStateFlow(),
                 closeables = listOf(embedder, vec, Closeable { db.close() }),
                 lazyCloseables = listOf(whisperDeferred, gemmaDeferred),
                 scope = scope,
@@ -250,16 +261,13 @@ class EdgeStack private constructor(
          * (ungated) HF URL with progress reported to the warm-up screen. Returns
          * null only if the download fails (caller falls back to Gemma/verbatim).
          */
-        private suspend fun provisionQwen(context: Context, onProgress: (String) -> Unit, small: Boolean): File? {
+        private suspend fun provisionQwen(context: Context, small: Boolean, onPercent: (Int?) -> Unit): File? {
             val ext = context.getExternalFilesDir("models") ?: return null
             val url = if (small) ModelDownloader.QWEN_SMALL_URL else ModelDownloader.QWEN_URL
             val target = File(ext, url.substringAfterLast('/'))
             if (target.exists() && target.length() > 0) return target
-            onProgress("Downloading AI model (one-time)…")
-            return ModelDownloader.ensure(url, target) { p ->
-                val mb = { b: Long -> b / (1024 * 1024) }
-                onProgress("Downloading AI model… ${p.percent}%  (${mb(p.downloadedBytes)}/${mb(p.totalBytes)} MB)")
-            }
+            onPercent(0)
+            return ModelDownloader.ensure(url, target) { p -> onPercent(p.percent) }
         }
 
         private fun provisionGemmaOrNull(context: Context): File? {
@@ -313,7 +321,7 @@ class EdgeStack private constructor(
             val target = File(dir, name)
             val assetSize = runCatching { context.assets.openFd(assetPath).use { it.length } }.getOrNull()
                 ?: throw IllegalStateException(
-                    "Model '$name' not found on device. Run:  ./scripts/push_models.sh",
+                    "A required file ($name) is missing from this install.",
                 )
             if (target.length() != assetSize) {
                 context.assets.open(assetPath).use { input ->

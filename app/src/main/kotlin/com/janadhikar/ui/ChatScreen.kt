@@ -79,6 +79,7 @@ fun ChatScreen(
     onHistory: () -> Unit = {},
     onOverview: () -> Unit = {},
     onOpenPdf: (statuteName: String, page: Int) -> Unit = { _, _ -> },
+    modelDownloadPercent: Int? = null,
 ) {
     val listState = rememberLazyListState()
     LaunchedEffect(turns.size) {
@@ -87,6 +88,17 @@ fun ChatScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
         TopBar(onNewChat = onNewChat, onSettings = onSettings, onHistory = onHistory, onOverview = onOverview, showNewChat = turns.isNotEmpty())
+        if (modelDownloadPercent != null) {
+            Text(
+                text = "⬇ Setting up the AI model… $modelDownloadPercent%  (one-time). You can browse Overview & History meanwhile.",
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                color = Palette.Black,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Palette.DirectiveYellow)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
         if (turns.isEmpty()) {
             EmptyState(engineReady, warmupStage, warmupFailed, onExample = onAsk, modifier = Modifier.weight(1f))
         } else {

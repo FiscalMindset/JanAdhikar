@@ -26,7 +26,7 @@ value class VerbatimStatuteText private constructor(val value: String) {
          * answer (e.g. all Fundamental Rights) from the REAL law, not a canned
          * summary. Capped so the model's context isn't overrun.
          */
-        fun combined(citations: List<VerifiedCitation>, language: AppLanguage, maxChars: Int = 4000): VerbatimStatuteText {
+        fun combined(citations: List<VerifiedCitation>, language: AppLanguage, maxChars: Int = 2000): VerbatimStatuteText {
             val text = citations.joinToString("\n\n") { c ->
                 if (language == AppLanguage.HINDI) c.verbatimTextHi else c.verbatimTextEn
             }
