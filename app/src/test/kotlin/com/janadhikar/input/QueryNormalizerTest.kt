@@ -37,9 +37,9 @@ class QueryNormalizerTest {
     }
 
     @Test
-    fun `hinglish in latin script resolves to english output space`() {
-        val query = QueryNormalizer.normalize("police ne mera phone le liya bina warrant ke")
-        assertThat(query?.language).isEqualTo(AppLanguage.ENGLISH)
+    fun `hinglish in latin script resolves to hindi so the answer is in hindi`() {
+        val query = QueryNormalizer.normalize("mera adhikar kya hai police ke against")
+        assertThat(query?.language).isEqualTo(AppLanguage.HINDI)
     }
 
     @Test

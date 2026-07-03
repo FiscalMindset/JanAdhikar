@@ -146,6 +146,34 @@ object ConceptLexicon {
             """.trimIndent(),
             refs = c("Motor Vehicles", "3", "4", "5"),
         ),
+        // ── Constitution: history, dates, amendments ──
+        regexOf("when was the constitution", "constitution adopted", "constitution made",
+            "constitution enacted", "constitution came into force", "commencement of the constitution",
+            "republic day", "26 january", "26 jan", "संविधान कब") to Concept(
+            overview = """
+                The **Constitution of India** was **adopted on 26 November 1949** and **came into force on 26 January 1950** — the day India became a Republic (celebrated as **Republic Day**).
+
+                - It was framed by the **Constituent Assembly**, chaired by Dr. Rajendra Prasad, with Dr. B. R. Ambedkar as head of the Drafting Committee.
+                - It is a **living document**: Parliament can change it over time through amendments under **Article 368**, and it has been amended more than a hundred times since 1950.
+
+                Ask "how to amend the constitution" or "article 368" to see the exact power to amend.
+            """.trimIndent(),
+            refs = c("Constitution", "368", "394"),
+        ),
+        regexOf("amend the constitution", "constitutional amendment", "how many amendments",
+            "how to amend", "change the constitution", "संशोधन") to Concept(
+            overview = """
+                The Constitution can be **changed only through Article 368**, which gives **Parliament** the power to amend it by addition, variation, or repeal.
+
+                - Most amendments need a **special majority** of Parliament; some also need approval from **half the State legislatures**.
+                - Since 1950 the Constitution has been amended **over 100 times**.
+                - However, the Supreme Court's **"basic structure" doctrine** means Parliament **cannot destroy the Constitution's core features** even by amendment.
+
+                Tap the card below for the exact words of Article 368.
+            """.trimIndent(),
+            refs = c("Constitution", "368"),
+        ),
+
         regexOf("self defence", "self-defence", "private defence", "right to defend",
             "आत्मरक्षा", "निजी प्रतिरक्षा") to Concept(
             overview = """

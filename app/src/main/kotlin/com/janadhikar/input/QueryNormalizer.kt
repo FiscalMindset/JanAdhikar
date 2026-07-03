@@ -21,6 +21,20 @@ object QueryNormalizer {
     /** Devanagari block — used to detect Hindi/Hinglish queries. */
     private val DEVANAGARI = Regex("""[ऀ-ॿ]""")
 
+    /**
+     * Common Hindi function/question words written in the Latin script
+     * (Hinglish). A citizen who types "article 15 kya hain" wants a Hindi
+     * answer, not English — these markers catch that.
+     */
+    private val HINGLISH = setOf(
+        "kya", "kyaa", "hain", "hai", "hai", "kaise", "kaisa", "kyu", "kyun", "kyon",
+        "mera", "meri", "mere", "mujhe", "muje", "adhikar", "adhikaar", "kanoon", "kanun",
+        "dhara", "anuchhed", "matlab", "batao", "bataye", "bataiye", "samjhao", "samjhaao",
+        "kaun", "konsa", "kaunsa", "kitne", "kitna", "kitni", "hota", "hoti", "karna", "sakta",
+        "nahi", "nahin", "gaya", "diya", "raha", "rahe", "wala", "wali", "koi", "aur",
+        "girftar", "girftaar", "shikayat", "sazaa", "saza",
+    )
+
     /** Filler tokens whisper commonly emits that carry no retrieval signal. */
     private val FILLERS = setOf(
         "um", "uh", "hmm", "haan", "अच्छा", "मतलब", "yaar", "यार", "like",
@@ -40,14 +54,18 @@ object QueryNormalizer {
     }
 
     /**
-     * Devanagari-dominant → Hindi. Hinglish (Hindi in Latin script) resolves
-     * to ENGLISH here, which is fine: the embedder is multilingual and the
-     * output language is separately overridable by the user's UI preference.
+     * Devanagari-dominant → Hindi. Latin script with Hinglish markers (kya,
+     * hain, adhikar…) → Hindi too, so a Hinglish question gets a Hindi answer.
+     * Otherwise English.
      */
     fun detectLanguage(text: String): AppLanguage {
         val devanagari = DEVANAGARI.findAll(text).count()
         val letters = text.count { !it.isWhitespace() }
         if (letters == 0) return AppLanguage.ENGLISH
-        return if (devanagari * 2 >= letters) AppLanguage.HINDI else AppLanguage.ENGLISH
+        if (devanagari * 2 >= letters) return AppLanguage.HINDI
+
+        val words = text.lowercase().split(WHITESPACE)
+        val hinglishHits = words.count { it.trim('?', '.', ',', '!') in HINGLISH }
+        return if (hinglishHits >= 1) AppLanguage.HINDI else AppLanguage.ENGLISH
     }
 }

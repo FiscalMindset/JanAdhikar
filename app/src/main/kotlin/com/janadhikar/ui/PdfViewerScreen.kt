@@ -7,8 +7,11 @@ import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -147,15 +150,18 @@ fun PdfViewerScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = Palette.DimGray,
             )
-            if (scale > 1f) {
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    "⤢",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Palette.DirectiveYellow,
-                    modifier = Modifier.clickable { scale = 1f; offsetX = 0f; offsetY = 0f },
-                )
-            }
+            Spacer(Modifier.width(10.dp))
+            // Zoom controls: − / reset% / +
+            ZoomButton("−") { scale = (scale - 0.5f).coerceAtLeast(1f); if (scale == 1f) { offsetX = 0f; offsetY = 0f } }
+            Text(
+                text = "${(scale * 100).toInt()}%",
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                color = if (scale > 1f) Palette.DirectiveYellow else Palette.DimGray,
+                modifier = Modifier
+                    .clickable { scale = 1f; offsetX = 0f; offsetY = 0f }
+                    .padding(horizontal = 6.dp),
+            )
+            ZoomButton("+") { scale = (scale + 0.5f).coerceAtMost(5f) }
         }
 
         val d = doc
@@ -173,11 +179,17 @@ fun PdfViewerScreen(
                         translationX = offsetX; translationY = offsetY
                     }
                     .transformable(transformState)
+                    .pointerInput(Unit) {
+                        // Double-tap toggles between fit-width and 2.5×.
+                        detectTapGestures(onDoubleTap = {
+                            if (scale > 1f) { scale = 1f; offsetX = 0f; offsetY = 0f } else scale = 2.5f
+                        })
+                    }
                     .padding(horizontal = 8.dp),
             ) {
                 items(count = d.pageCount) { index ->
                     Spacer(Modifier.height(8.dp))
-                    PdfPage(d, index, highRes = scale > 1f)
+                    PdfPage(d, index)
                 }
             }
         }
@@ -185,14 +197,26 @@ fun PdfViewerScreen(
 }
 
 @Composable
-private fun PdfPage(doc: PdfDoc, index: Int, highRes: Boolean) {
+private fun ZoomButton(label: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.titleLarge,
+        color = Palette.DirectiveYellow,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp),
+    )
+}
+
+@Composable
+private fun PdfPage(doc: PdfDoc, index: Int) {
     val context = LocalContext.current
-    val screenW = remember { context.resources.displayMetrics.widthPixels - 32 }
-    // Render at 2x when zoomed so text stays crisp; 1x otherwise (lighter).
-    val widthPx = if (highRes) screenW * 2 else screenW
+    // Render once at ~2× width so text stays crisp when the user zooms in via
+    // graphicsLayer, WITHOUT re-rendering on every zoom (that caused flicker).
+    val widthPx = remember { (context.resources.displayMetrics.widthPixels - 32) * 2 }
     var bitmap by remember(index) { mutableStateOf<Bitmap?>(null) }
 
-    LaunchedEffect(index, highRes) {
+    LaunchedEffect(index) {
         bitmap = withContext(Dispatchers.IO) { runCatching { doc.render(index, widthPx) }.getOrNull() }
     }
 
