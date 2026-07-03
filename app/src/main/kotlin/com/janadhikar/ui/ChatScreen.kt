@@ -244,20 +244,11 @@ private fun GroundedAnswer(a: Answer.Grounded, onOpenPdf: (String, Int) -> Unit 
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.writing), style = MaterialTheme.typography.bodyMedium, color = Palette.DimGray)
             }
-        } else if (a.streaming) {
-            // While streaming, plain text + caret (renders once complete).
-            SelectionContainer {
-                Text(
-                    text = a.explanation.text + " ▋",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Palette.White,
-                    modifier = Modifier.testTag("answer_text"),
-                )
-            }
         } else {
-            // Final answer: rendered Markdown (bold, bullets), production-style.
+            // Rendered Markdown (bold/bullets) — live during streaming too, so
+            // there are never raw **asterisks**; a caret marks streaming.
             MarkdownText(
-                markdown = a.explanation.text,
+                markdown = a.explanation.text + if (a.streaming) "  ▋" else "",
                 color = if (a.explanation.isVerbatimFallback) Palette.PaperWhite else Palette.White,
                 modifier = Modifier.testTag("answer_text"),
             )
