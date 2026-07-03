@@ -20,6 +20,7 @@ with the exact law behind it.**
 ### 📲 [**Download Janadhikar v1.0.0 (APK)**](https://github.com/FiscalMindset/JanAdhikar/releases/latest)
 
 <a href="https://github.com/FiscalMindset/JanAdhikar/releases/latest"><img src="https://img.shields.io/github/v/release/FiscalMindset/JanAdhikar?style=for-the-badge&label=Latest%20Release&color=3DDC84&logo=android&logoColor=white" alt="Latest release"/></a>
+<a href="https://github.com/FiscalMindset/JanAdhikar/releases"><img src="https://img.shields.io/github/downloads/FiscalMindset/JanAdhikar/total?style=for-the-badge&label=Downloads&color=FF6F00&logo=cloudsmith&logoColor=white" alt="Total downloads"/></a>
 <img src="https://img.shields.io/badge/APK-247%20MB-555?style=for-the-badge" alt="APK size"/>
 <img src="https://img.shields.io/badge/Requires-Android%208.0%2B%20(arm64)-3DDC84?style=for-the-badge" alt="Requirements"/>
 
