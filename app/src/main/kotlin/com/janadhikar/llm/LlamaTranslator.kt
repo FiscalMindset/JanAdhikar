@@ -88,9 +88,13 @@ class LlamaTranslator private constructor(private val llama: LlamaBridge) : Clos
     override fun close() = llama.close()
 
     companion object {
-        private const val INFERENCE_TIMEOUT_MS = 90_000L
+        // Generous — a budget CPU needs a couple of minutes for a full rich
+        // answer, and llama.cpp's native call can't be cancelled mid-generation
+        // anyway; a short timeout only threw away a nearly-finished answer and
+        // showed raw law instead. Better to wait and deliver the real answer.
+        private const val INFERENCE_TIMEOUT_MS = 240_000L
         private const val WARMUP_TIMEOUT_MS = 40_000L
-        private const val MAX_NEW_TOKENS = 340
+        private const val MAX_NEW_TOKENS = 300
 
         fun open(modelFile: File): LlamaTranslator? =
             LlamaBridge.open(modelFile)?.let { LlamaTranslator(it) }
