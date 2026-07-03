@@ -35,12 +35,36 @@ object OutputSanitizer {
         data object Unusable : Verdict
     }
 
+    /** Prompt instructions the model sometimes echoes instead of answering. */
+    private val INSTRUCTION_LEAK = Regex(
+        """LEGAL TEXT|reading level|class-?5|short sentences|छोटे वाक्य|""" +
+            """[0-9] से [0-9] (छोटे|सरल)|In simple words:|Key point:|केवल LEGAL""",
+        RegexOption.IGNORE_CASE,
+    )
+
     fun inspect(rawLlmOutput: String): Verdict {
         val text = rawLlmOutput.trim().removeSuffix("<end_of_turn>").trim()
         if (text.isBlank()) return Verdict.Unusable
         for (pattern in CITATION_PATTERNS) {
             if (pattern.containsMatchIn(text)) return Verdict.CitationLeak(pattern.pattern)
         }
+        // Small models (esp. in Hindi) can spew repeated tokens ("6-7 6-7 6-7…")
+        // or echo the prompt. That is worse than the raw law — discard it.
+        if (INSTRUCTION_LEAK.containsMatchIn(text) || isRepetitiveGibberish(text)) return Verdict.Unusable
         return Verdict.Clean(text)
+    }
+
+    private fun isRepetitiveGibberish(text: String): Boolean {
+        val words = text.split(Regex("""\s+""")).filter { it.isNotBlank() }
+        if (words.size < 6) return false
+        // One token dominates the output → degenerate repetition.
+        val topShare = words.groupingBy { it }.eachCount().values.max().toFloat() / words.size
+        if (topShare > 0.30f) return true
+        // The same token repeated 4+ times in a row.
+        var run = 1
+        for (i in 1 until words.size) {
+            if (words[i] == words[i - 1]) { run++; if (run >= 4) return true } else run = 1
+        }
+        return false
     }
 }
