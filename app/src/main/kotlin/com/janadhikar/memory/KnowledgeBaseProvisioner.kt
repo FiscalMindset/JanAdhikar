@@ -23,6 +23,7 @@ class KnowledgeBaseProvisioner(private val context: Context) {
         val expectedSha = context.assets.open(SHA_ASSET).bufferedReader().use { it.readText().trim() }
 
         if (target.exists() && sha256(target) == expectedSha) {
+            clearSidecars(target) // a stale -wal from a prior DB corrupts reads
             return target
         }
 
@@ -48,11 +49,24 @@ class KnowledgeBaseProvisioner(private val context: Context) {
             staging.delete()
         }
         check(sha256(target) == expectedSha) { "Knowledge base corrupt after provisioning." }
+        clearSidecars(target)
         // NOTE: no filesystem read-only bit — Android's SQLite helper needs to
         // open the file r/w even for reads. Immutability is enforced instead by
         // PRAGMA query_only (Room), SQLITE_OPEN_READONLY (native), and the
         // SELECT-only DAO (Rule 4) — plus the SHA-256 check above on every start.
         return target
+    }
+
+    /**
+     * Delete SQLite journal sidecars. A `-wal`/`-shm` left by a PRIOR database
+     * file gets applied over the freshly-provisioned one, corrupting reads
+     * (kb_meta comes back empty). Safe because the DB is opened read-only, so
+     * no committed data ever lives only in a WAL.
+     */
+    private fun clearSidecars(dbFile: File) {
+        for (suffix in listOf("-wal", "-shm", "-journal")) {
+            File(dbFile.path + suffix).delete()
+        }
     }
 
     private fun sha256(file: File): String {
