@@ -249,12 +249,24 @@ class EdgeStack private constructor(
 
         private fun provisionGemmaOrNull(context: Context): File? {
             context.getExternalFilesDir("models")?.let { ext ->
-                val f = File(ext, GemmaTranslator.MODEL_ASSET.substringAfterLast('/'))
-                if (f.exists() && f.length() > 0) return f
-                ext.listFiles()?.firstOrNull { it.name.contains("4b", true) && it.extension == "task" }
-                    ?.let { return it }
+                // The 4B (~2.4 GB) only loads without OOM on high-RAM devices —
+                // MediaPipe needs the model plus large working buffers. Attempt it
+                // ONLY if the device has plenty of RAM; else use the 1B.
+                if (hasHighRam(context)) {
+                    ext.listFiles()?.firstOrNull { it.name.contains("4b", true) && it.extension == "task" }
+                        ?.let { return it }
+                }
+                val oneB = File(ext, GemmaTranslator.MODEL_ASSET.substringAfterLast('/'))
+                if (oneB.exists() && oneB.length() > 0) return oneB
             }
             return runCatching { provisionGemma(context) }.getOrNull()
+        }
+
+        private fun hasHighRam(context: Context): Boolean {
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val mi = android.app.ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
+            // Need generous free RAM to avoid the 4B OOM-killing the app.
+            return mi.totalMem >= 11L * 1024 * 1024 * 1024 && mi.availMem >= 5L * 1024 * 1024 * 1024
         }
 
         private fun provisionGemma(context: Context): File {
