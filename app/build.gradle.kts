@@ -95,7 +95,11 @@ android {
         // via scripts/push_models.sh (adb push) / on-first-run download and are
         // read from external storage (see EdgeStack.provisionAsset).
         // (No '!' prefix ⇒ these patterns are IGNORED/excluded from the APK.)
-        ignoreAssetsPattern = "*.tflite:*.bin:*.task:*.gguf"
+        // Bundle the search embedder (.tflite, 113 MB) — it is REQUIRED at every
+        // launch and is a custom export with no public URL, so it must ship in
+        // the APK. The big chat/voice models (.bin/.task/.gguf) are excluded and
+        // fetched on first run (download) or adb-pushed (dev).
+        ignoreAssetsPattern = "*.bin:*.task:*.gguf"
     }
 
     packaging {

@@ -126,7 +126,14 @@ class EdgeStack private constructor(
             //    the background; the engine awaits them only when actually used.
             val whisperDeferred: Deferred<WhisperBridge?> = scope.async {
                 runCatching {
-                    WhisperBridge.open(provisionAsset(context, WHISPER_MODEL_ASSET))
+                    // Pushed (dev) → use it; else download the public model once so
+                    // voice works on a link-shared APK too. Voice degrades to
+                    // text-only if the download fails.
+                    val ext = context.getExternalFilesDir("models")
+                    val pushed = ext?.let { File(it, "ggml-small-q5_1.bin") }
+                    val file = if (pushed != null && pushed.exists() && pushed.length() > 0) pushed
+                    else ext?.let { ModelDownloader.ensure(ModelDownloader.WHISPER_URL, File(it, "ggml-small-q5_1.bin")) {} }
+                    file?.let { WhisperBridge.open(it) }
                 }.getOrNull()
             }
             // Answer model. Default: Qwen 2.5 1.5B (llama.cpp) — stronger

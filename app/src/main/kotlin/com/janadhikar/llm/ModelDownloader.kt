@@ -20,6 +20,10 @@ object ModelDownloader {
     const val QWEN_URL =
         "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
 
+    /** Public whisper small (multilingual, q5) — for voice input. */
+    const val WHISPER_URL =
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin"
+
     data class Progress(val downloadedBytes: Long, val totalBytes: Long) {
         val percent: Int get() = if (totalBytes > 0) ((downloadedBytes * 100) / totalBytes).toInt() else 0
     }
