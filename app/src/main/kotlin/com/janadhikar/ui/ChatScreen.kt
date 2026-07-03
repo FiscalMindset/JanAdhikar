@@ -57,6 +57,7 @@ import com.janadhikar.engine.Answer
 import com.janadhikar.engine.Turn
 import com.janadhikar.input.AppLanguage
 import com.janadhikar.ui.components.CitationCard
+import com.janadhikar.ui.components.MarkdownText
 import com.janadhikar.ui.theme.Palette
 
 /**
@@ -227,15 +228,23 @@ private fun GroundedAnswer(a: Answer.Grounded) {
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.writing), style = MaterialTheme.typography.bodyMedium, color = Palette.DimGray)
             }
-        } else {
+        } else if (a.streaming) {
+            // While streaming, plain text + caret (renders once complete).
             SelectionContainer {
                 Text(
-                    text = a.explanation.text + if (a.streaming) " ▋" else "",
+                    text = a.explanation.text + " ▋",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = if (a.explanation.isVerbatimFallback) Palette.PaperWhite else Palette.White,
+                    color = Palette.White,
                     modifier = Modifier.testTag("answer_text"),
                 )
             }
+        } else {
+            // Final answer: rendered Markdown (bold, bullets), production-style.
+            MarkdownText(
+                markdown = a.explanation.text,
+                color = if (a.explanation.isVerbatimFallback) Palette.PaperWhite else Palette.White,
+                modifier = Modifier.testTag("answer_text"),
+            )
         }
         if (!a.streaming && a.explanation.text.isNotBlank()) {
             Spacer(Modifier.size(8.dp))

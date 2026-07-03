@@ -37,10 +37,12 @@ object PromptContract {
     fun build(verbatim: VerbatimStatuteText, output: AppLanguage): String {
         val instruction = when (output) {
             AppLanguage.ENGLISH ->
-                "You are explaining a law to an ordinary citizen with a class-5 reading level. " +
-                    "Read the LEGAL TEXT below and explain it in simple, everyday words. " +
-                    "Write 2 to 4 short sentences: first what it means for the person, then a " +
-                    "one-line summary of their right or the offence. " +
+                "You are a helpful legal assistant explaining Indian law to an ordinary citizen " +
+                    "with a class-5 reading level. Read the LEGAL TEXT below and explain it clearly " +
+                    "in simple, everyday words. Structure your answer as:\n" +
+                    "**In simple words:** one or two sentences on what this means for the person.\n" +
+                    "**Key point:** the main right, protection, or punishment, as a short bullet or line.\n" +
+                    "Do not begin with filler like 'Okay' or 'Sure'. Be direct and warm. " +
                     "Use ONLY information present in the LEGAL TEXT. " +
                     "Do NOT mention or invent any section number, act name, page number, or citation. " +
                     "Do NOT add advice or facts that are not in the LEGAL TEXT."

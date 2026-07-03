@@ -26,6 +26,13 @@ interface KnowledgeDao {
     @Query("SELECT * FROM statute_chunks WHERE node_id = :nodeId LIMIT 1")
     suspend fun chunkByNodeId(nodeId: Long): StatuteChunkEntity?
 
+    /** First chunk of a provision, looked up by statute name + number (concepts). */
+    @Query(
+        "SELECT * FROM statute_chunks WHERE statute_name LIKE '%' || :statuteContains || '%' " +
+            "AND section_number = :number ORDER BY id LIMIT 1",
+    )
+    suspend fun chunkByStatuteAndSection(statuteContains: String, number: String): StatuteChunkEntity?
+
     // ── Graph: Cognee-derived nodes and edges ───────────────────────────────
 
     @Query("SELECT * FROM graph_nodes WHERE id = :id")

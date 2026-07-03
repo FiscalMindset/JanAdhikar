@@ -38,6 +38,24 @@ class HybridRetriever(
     }
 
     suspend fun retrieve(normalizedQuery: String): RetrievalResult {
+        // ── 0. CONCEPT — broad questions ("fundamental rights") map directly
+        //    to the authoritative provisions; similarity search can't. ─────────
+        val conceptRefs = ConceptLexicon.resolve(normalizedQuery)
+        if (conceptRefs.isNotEmpty()) {
+            val citations = conceptRefs.mapNotNull { ref ->
+                dao.chunkByStatuteAndSection(ref.statuteContains, ref.number)
+                    ?.let { (MetadataExtractor.extract(it) as? MetadataExtractor.Extraction.Valid)?.citation }
+            }
+            if (citations.isNotEmpty()) {
+                return RetrievalResult.Match(
+                    primary = citations.first(),
+                    confidence = CONCEPT_CONFIDENCE,
+                    related = citations.drop(1),
+                    redirectedFromSuperseded = false,
+                )
+            }
+        }
+
         // ── 1. KEYWORD (crisis-word → legal-term) ────────────────────────────
         val ftsQuery = CrisisLexicon.toFtsQuery(normalizedQuery)
         val keywordIds = if (ftsQuery.isNotBlank()) keywordIndex.search(ftsQuery, K_NEIGHBORS) else emptyList()
@@ -183,6 +201,9 @@ class HybridRetriever(
 
         /** Confidence assigned when a keyword (crisis-lexicon) hit is present. */
         const val KEYWORD_CONFIDENCE = 0.75f
+
+        /** Concept-lexicon matches are authoritative, curated provisions. */
+        const val CONCEPT_CONFIDENCE = 0.95f
 
         const val K_NEIGHBORS = 8
         private const val MAX_RELATED = 4

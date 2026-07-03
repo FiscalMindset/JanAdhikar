@@ -168,6 +168,8 @@ class HybridRetrieverTest {
     ) : KnowledgeDao {
         override suspend fun chunksByIds(ids: List<Long>) = chunks.filter { it.id in ids }
         override suspend fun chunkByNodeId(nodeId: Long) = chunks.firstOrNull { it.nodeId == nodeId }
+        override suspend fun chunkByStatuteAndSection(statuteContains: String, number: String) =
+            chunks.firstOrNull { it.statuteName.contains(statuteContains) && it.sectionNumber == number }
         override suspend fun nodeById(id: Long): GraphNodeEntity? = null
         override suspend fun edgesFrom(nodeId: Long, relation: String) =
             edges.filter { it.srcNodeId == nodeId && it.relation == relation }.sortedByDescending { it.weight }
