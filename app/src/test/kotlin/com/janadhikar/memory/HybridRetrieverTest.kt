@@ -20,6 +20,7 @@ class HybridRetrieverTest {
         nodeId = nodeId,
         statuteName = "Bharatiya Nagarik Suraksha Sanhita, 2023",
         statuteNameHi = "भारतीय नागरिक सुरक्षा संहिता, 2023",
+        unit = "SECTION",
         sectionNumber = section,
         clause = null,
         pageNumber = 21,

@@ -24,6 +24,7 @@
     <string name="verified_record">सत्यापित अभिलेख</string>
     <string name="statute_label">क़ानून</string>
     <string name="section_label">धारा</string>
+    <string name="article_label">अनुच्छेद</string>
     <string name="clause_label">खंड</string>
     <string name="page_label">पृष्ठ</string>
     <string name="source_label">स्रोत</string>

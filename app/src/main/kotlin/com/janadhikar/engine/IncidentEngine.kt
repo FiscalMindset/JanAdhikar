@@ -53,13 +53,17 @@ class IncidentEngine(
     private var pcmWindow = FloatArray(0)
     private var startedAt = 0L
 
+    /** True while the current session is a microphone session (see Active.isVoice). */
+    private var sessionIsVoice = false
+
     // ── Voice path ───────────────────────────────────────────────────────────
 
     fun startVoiceCapture() {
         if (_state.value !is IncidentState.Idle) return
         startedAt = clock()
         pcmWindow = FloatArray(0)
-        _state.value = IncidentState.Active("", AgentPhase.LISTENING, 0L)
+        sessionIsVoice = true
+        _state.value = IncidentState.Active("", AgentPhase.LISTENING, 0L, isVoice = true)
 
         captureJob = scope.launch {
             var samplesSinceDecode = 0
@@ -78,11 +82,12 @@ class IncidentEngine(
                             transcript = currentTranscript(),
                             phase = AgentPhase.TRANSCRIBING,
                             elapsedMillis = elapsed(),
+                            isVoice = true,
                         )
                         val text = transcriber.transcribe(pcmWindow)
                         // cancel() may have fired while whisper was decoding
                         if (_state.value is IncidentState.Active) {
-                            _state.value = IncidentState.Active(text, AgentPhase.LISTENING, elapsed())
+                            _state.value = IncidentState.Active(text, AgentPhase.LISTENING, elapsed(), isVoice = true)
                         }
                     }
                 }
@@ -106,7 +111,7 @@ class IncidentEngine(
         captureJob = null
         scope.launch {
             val finalTranscript = if (pcmWindow.isNotEmpty()) {
-                _state.value = IncidentState.Active(active.transcript, AgentPhase.TRANSCRIBING, elapsed())
+                _state.value = IncidentState.Active(active.transcript, AgentPhase.TRANSCRIBING, elapsed(), isVoice = true)
                 transcriber.transcribe(pcmWindow)
             } else {
                 active.transcript
@@ -121,6 +126,7 @@ class IncidentEngine(
     fun submitTypedQuery(rawText: String) {
         if (_state.value !is IncidentState.Idle) return
         startedAt = clock()
+        sessionIsVoice = false
         scope.launch { resolve(rawText) }
     }
 
@@ -132,12 +138,12 @@ class IncidentEngine(
             _state.value = IncidentState.NoStatute // nothing searchable → refuse (Rule 3)
             return
         }
-        _state.value = IncidentState.Active(query.text, AgentPhase.SEARCHING, elapsed())
+        _state.value = IncidentState.Active(query.text, AgentPhase.SEARCHING, elapsed(), isVoice = sessionIsVoice)
 
         when (val result = retrieve(query)) {
             is RetrievalResult.NoVerifiedStatute -> _state.value = IncidentState.NoStatute
             is RetrievalResult.Match -> {
-                _state.value = IncidentState.Active(query.text, AgentPhase.TRANSLATING, elapsed())
+                _state.value = IncidentState.Active(query.text, AgentPhase.TRANSLATING, elapsed(), isVoice = sessionIsVoice)
                 val language = preferredLanguage() ?: query.language
                 val directive = translate(result.primary, language)
                 _state.value = IncidentState.Shield(

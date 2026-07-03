@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "8827474e0b6a7136820491c98f0c40c9",
+    "identityHash": "ee4b906a6dc66c7dafd83d267d5f8340",
     "entities": [
       {
         "tableName": "statute_chunks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `node_id` INTEGER NOT NULL, `statute_name` TEXT NOT NULL, `statute_name_hi` TEXT NOT NULL, `section_number` TEXT NOT NULL, `clause` TEXT, `page_number` INTEGER NOT NULL, `chunk_text_en` TEXT NOT NULL, `chunk_text_hi` TEXT NOT NULL, `source_document` TEXT NOT NULL, `source_sha256` TEXT NOT NULL, `compilation_date` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `node_id` INTEGER NOT NULL, `statute_name` TEXT NOT NULL, `statute_name_hi` TEXT NOT NULL, `unit` TEXT NOT NULL DEFAULT 'SECTION', `section_number` TEXT NOT NULL, `clause` TEXT, `page_number` INTEGER NOT NULL, `chunk_text_en` TEXT NOT NULL, `chunk_text_hi` TEXT NOT NULL, `source_document` TEXT NOT NULL, `source_sha256` TEXT NOT NULL, `compilation_date` TEXT NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -31,6 +31,13 @@
             "columnName": "statute_name_hi",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "unit",
+            "columnName": "unit",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'SECTION'"
           },
           {
             "fieldPath": "sectionNumber",
@@ -208,7 +215,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8827474e0b6a7136820491c98f0c40c9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ee4b906a6dc66c7dafd83d267d5f8340')"
     ]
   }
 }

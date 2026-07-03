@@ -11,6 +11,7 @@ class MetadataExtractorTest {
         nodeId = 10L,
         statuteName = "Bharatiya Nagarik Suraksha Sanhita, 2023",
         statuteNameHi = "भारतीय नागरिक सुरक्षा संहिता, 2023",
+        unit = "SECTION",
         sectionNumber = "47",
         clause = "(1)",
         pageNumber = 21,

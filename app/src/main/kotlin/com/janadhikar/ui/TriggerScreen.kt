@@ -113,6 +113,9 @@ fun TriggerScreen(
             enabled = engineReady,
             placeholder = { Text(stringResource(R.string.trigger_type_hint)) },
             textStyle = MaterialTheme.typography.bodyLarge,
+            // Single line so the keyboard's Search/Enter key submits the query
+            // instead of inserting a newline.
+            singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSubmitText(typed) }),
             colors = OutlinedTextFieldDefaults.colors(

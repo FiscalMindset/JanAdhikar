@@ -11,6 +11,8 @@ data class VerifiedCitation(
     val chunkId: Long,
     val statuteName: String,
     val statuteNameHi: String,
+    /** "SECTION" or "ARTICLE" — governs the citation-card label. */
+    val unit: String,
     val sectionNumber: String,
     val clause: String?,
     val pageNumber: Int,

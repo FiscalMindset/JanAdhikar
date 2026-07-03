@@ -33,6 +33,7 @@ object MetadataExtractor {
                     chunkId = row.id,
                     statuteName = row.statuteName.trim(),
                     statuteNameHi = row.statuteNameHi.trim(),
+                    unit = row.unit.trim().ifEmpty { "SECTION" },
                     sectionNumber = row.sectionNumber.trim(),
                     clause = row.clause?.trim()?.takeIf { it.isNotEmpty() },
                     pageNumber = row.pageNumber,

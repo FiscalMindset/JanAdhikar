@@ -15,7 +15,11 @@ class KnowledgeBaseProvisioner(private val context: Context) {
 
     /** Returns the ready-to-open DB file, provisioning it on first call. */
     fun provision(): File {
-        val target = File(context.noBackupFilesDir, DB_FILE_NAME)
+        // Force-create no_backup/ up front: on a fresh install the directory
+        // may not exist until first written, and the getter alone is not always
+        // enough on every OEM/OS build.
+        val dir = context.noBackupFilesDir.apply { mkdirs() }
+        val target = File(dir, DB_FILE_NAME)
         val expectedSha = context.assets.open(SHA_ASSET).bufferedReader().use { it.readText().trim() }
 
         if (target.exists() && sha256(target) == expectedSha) {
@@ -23,8 +27,7 @@ class KnowledgeBaseProvisioner(private val context: Context) {
         }
 
         // First run, APK upgrade (new artifact), or corrupted copy: re-copy.
-        val staging = File(context.noBackupFilesDir, "$DB_FILE_NAME.staging")
-        staging.parentFile?.mkdirs() // no_backup/ may not exist yet on a fresh install
+        val staging = File(dir, "$DB_FILE_NAME.staging")
         context.assets.open(DB_ASSET).use { input ->
             staging.outputStream().use { output -> input.copyTo(output) }
         }

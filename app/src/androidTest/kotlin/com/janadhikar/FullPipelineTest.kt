@@ -57,6 +57,15 @@ class FullPipelineTest {
     }
 
     @Test
+    fun constitutionQuery_resolvesToArticleWithArticleUnit() = runBlocking {
+        val shield = submitAndAwaitResolution("do I have a right to equality before the law")
+        val citation = (shield as IncidentState.Shield).citation
+        assertThat(citation.statuteName).contains("Constitution of India")
+        assertThat(citation.unit).isEqualTo("ARTICLE") // card shows "Article 14", not "Section"
+        assertThat(citation.sectionNumber).isEqualTo("14")
+    }
+
+    @Test
     fun hindiMurderQuery_resolvesToVerifiedBnsCitation() = runBlocking {
         val shield = submitAndAwaitResolution("हत्या की सजा क्या है")
         val citation = (shield as IncidentState.Shield).citation

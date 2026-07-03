@@ -59,7 +59,11 @@ fun CitationCard(
             AppLanguage.HINDI -> citation.statuteNameHi
         }
         ReceiptRow(stringResource(R.string.statute_label), statuteName)
-        ReceiptRow(stringResource(R.string.section_label), citation.sectionNumber)
+        val unitLabel = when (citation.unit) {
+            "ARTICLE" -> stringResource(R.string.article_label)
+            else -> stringResource(R.string.section_label)
+        }
+        ReceiptRow(unitLabel, citation.sectionNumber)
         citation.clause?.let { ReceiptRow(stringResource(R.string.clause_label), it) }
         ReceiptRow(stringResource(R.string.page_label), citation.pageNumber.toString())
 

@@ -1,18 +1,54 @@
 {
   "acts": [
     {
-      "pdf": "corpus/bnss_2023.pdf",
-      "statute_name": "Bharatiya Nagarik Suraksha Sanhita, 2023",
-      "statute_name_hi": "भारतीय नागरिक सुरक्षा संहिता, 2023",
-      "source_document": "the_bharatiya_nagarik_suraksha_sanhita,_2023.pdf (indiacode.nic.in, Act 46 of 2023)",
-      "expected_last_section": 531
+      "pdf": "corpus/constitution_india.pdf",
+      "statute_name": "Constitution of India",
+      "statute_name_hi": "भारत का संविधान",
+      "source_document": "constitution_of_india.pdf (Govt. of India, consolidated 2024)",
+      "unit": "Article",
+      "mode": "flow",
+      "max_gap": 10,
+      "expected_last_section": 395
     },
     {
       "pdf": "corpus/bns_2023.pdf",
       "statute_name": "Bharatiya Nyaya Sanhita, 2023",
       "statute_name_hi": "भारतीय न्याय संहिता, 2023",
-      "source_document": "a202345.pdf (indiacode.nic.in, Act 45 of 2023)",
+      "source_document": "a2023-45.pdf (indiacode.nic.in, Act 45 of 2023)",
+      "unit": "Section",
+      "mode": "lines",
+      "max_gap": 1,
       "expected_last_section": 358
+    },
+    {
+      "pdf": "corpus/bnss_2023.pdf",
+      "statute_name": "Bharatiya Nagarik Suraksha Sanhita, 2023",
+      "statute_name_hi": "भारतीय नागरिक सुरक्षा संहिता, 2023",
+      "source_document": "the_bharatiya_nagarik_suraksha_sanhita,_2023.pdf (indiacode.nic.in, Act 46 of 2023)",
+      "unit": "Section",
+      "mode": "lines",
+      "max_gap": 1,
+      "expected_last_section": 531
+    },
+    {
+      "pdf": "corpus/bsa_2023.pdf",
+      "statute_name": "Bharatiya Sakshya Adhiniyam, 2023",
+      "statute_name_hi": "भारतीय साक्ष्य अधिनियम, 2023",
+      "source_document": "aa202347.pdf (indiacode.nic.in, Act 47 of 2023)",
+      "unit": "Section",
+      "mode": "lines",
+      "max_gap": 1,
+      "expected_last_section": 170
+    },
+    {
+      "pdf": "corpus/motor_vehicles_1988.pdf",
+      "statute_name": "Motor Vehicles Act, 1988",
+      "statute_name_hi": "मोटर यान अधिनियम, 1988",
+      "source_document": "a1988-59.pdf (indiacode.nic.in, Act 59 of 1988)",
+      "unit": "Section",
+      "mode": "lines",
+      "max_gap": 3,
+      "expected_last_section": 217
     }
   ]
 }

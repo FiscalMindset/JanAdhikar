@@ -17,6 +17,8 @@ data class StatuteChunkEntity(
     @ColumnInfo(name = "node_id") val nodeId: Long,
     @ColumnInfo(name = "statute_name") val statuteName: String,
     @ColumnInfo(name = "statute_name_hi") val statuteNameHi: String,
+    /** Provision kind: "SECTION" (acts) or "ARTICLE" (Constitution). */
+    @ColumnInfo(name = "unit", defaultValue = "SECTION") val unit: String,
     @ColumnInfo(name = "section_number") val sectionNumber: String,
     @ColumnInfo(name = "clause") val clause: String?,
     @ColumnInfo(name = "page_number") val pageNumber: Int,

@@ -18,6 +18,7 @@ class IncidentEngineTest {
         chunkId = 1L,
         statuteName = "Bharatiya Nagarik Suraksha Sanhita, 2023",
         statuteNameHi = "भारतीय नागरिक सुरक्षा संहिता, 2023",
+        unit = "SECTION",
         sectionNumber = "47",
         clause = null,
         pageNumber = 21,
@@ -67,6 +68,34 @@ class IncidentEngineTest {
             val shield = awaitItem() as IncidentState.Shield
             assertThat(shield.citation.sectionNumber).isEqualTo("47")
             assertThat(shield.directive.text).isEqualTo("Demand the grounds of your arrest now.")
+        }
+    }
+
+    @Test
+    fun `typed query active states are not voice sessions`() = runTest {
+        // Regression: a typed query must never present as a mic session, or the
+        // UI would start the FGS-microphone service and crash without
+        // RECORD_AUDIO (Android 14+).
+        val engine = engine(backgroundScope)
+        engine.state.test {
+            skipItems(1) // Idle
+            engine.submitTypedQuery("police won't tell me why I'm being arrested")
+            val searching = awaitItem() as IncidentState.Active
+            assertThat(searching.isVoice).isFalse()
+            val translating = awaitItem() as IncidentState.Active
+            assertThat(translating.isVoice).isFalse()
+            awaitItem() as IncidentState.Shield
+        }
+    }
+
+    @Test
+    fun `voice session active states are voice sessions`() = runTest {
+        val engine = engine(backgroundScope)
+        engine.state.test {
+            skipItems(1) // Idle
+            engine.startVoiceCapture()
+            val listening = awaitItem() as IncidentState.Active
+            assertThat(listening.isVoice).isTrue()
         }
     }
 

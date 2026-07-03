@@ -35,6 +35,12 @@ GOLDEN = [
     ("someone threatened to kill me", "Bharatiya Nyaya", {"351"}),
     ("my husband beats me for dowry", "Bharatiya Nyaya", {"85", "80"}),
     ("someone stole my mobile phone", "Bharatiya Nyaya", {"303", "304"}),
+    # Constitution of India
+    ("do I have a right to equality before the law", "Constitution", {"14"}),
+    ("right to freedom of speech and expression", "Constitution", {"19"}),
+    ("right to life and personal liberty", "Constitution", {"21"}),
+    ("right to free education for children", "Constitution", {"21A"}),
+    ("protection against self incrimination when accused", "Constitution", {"20"}),
     # Hindi
     ("पुलिस गिरफ्तारी का कारण नहीं बता रही", "Bharatiya Nagarik", {"47", "35"}),
     ("क्या पुलिस बिना वारंट के घर की तलाशी ले सकती है", "Bharatiya Nagarik", {"185", "103"}),

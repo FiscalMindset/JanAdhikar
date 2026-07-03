@@ -60,7 +60,17 @@ class MainActivity : ComponentActivity() {
                     .flatMapLatest { it.engine.state }
                     .collectLatest { state ->
                         val serviceIntent = Intent(this@MainActivity, IncidentPipelineService::class.java)
-                        if (state is IncidentState.Active) {
+                        // Only a genuine MIC session needs the foreground
+                        // microphone service. A typed query (isVoice = false)
+                        // must NOT start it — an FGS of type microphone without
+                        // a granted RECORD_AUDIO permission is a hard crash on
+                        // Android 14+.
+                        val micSession = state is IncidentState.Active && state.isVoice &&
+                            ContextCompat.checkSelfPermission(
+                                this@MainActivity,
+                                Manifest.permission.RECORD_AUDIO,
+                            ) == PackageManager.PERMISSION_GRANTED
+                        if (micSession) {
                             startForegroundService(serviceIntent)
                         } else {
                             stopService(serviceIntent)

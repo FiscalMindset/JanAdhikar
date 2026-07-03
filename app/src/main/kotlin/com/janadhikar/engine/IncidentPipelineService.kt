@@ -37,14 +37,18 @@ class IncidentPipelineService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = buildNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        // Defence in depth: even though the caller only starts this for a
+        // permission-granted mic session, a SecurityException here must never
+        // crash the app — stop cleanly instead.
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: SecurityException) {
+            stopSelf()
+            return START_NOT_STICKY
         }
         // If the process was killed and restarted, there is no incident to
         // resume (audio is never persisted) — do not restart with stale intent.

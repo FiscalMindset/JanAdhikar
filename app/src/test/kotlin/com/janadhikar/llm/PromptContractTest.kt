@@ -12,6 +12,7 @@ class PromptContractTest {
         chunkId = 1L,
         statuteName = "Bharatiya Nagarik Suraksha Sanhita, 2023",
         statuteNameHi = "भारतीय नागरिक सुरक्षा संहिता, 2023",
+        unit = "SECTION",
         sectionNumber = "47",
         clause = null,
         pageNumber = 21,

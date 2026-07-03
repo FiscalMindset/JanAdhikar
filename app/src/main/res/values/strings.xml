@@ -25,6 +25,7 @@
     <string name="verified_record">VERIFIED RECORD</string>
     <string name="statute_label">Statute</string>
     <string name="section_label">Section</string>
+    <string name="article_label">Article</string>
     <string name="clause_label">Clause</string>
     <string name="page_label">Page</string>
     <string name="source_label">Source</string>

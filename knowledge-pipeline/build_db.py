@@ -25,7 +25,7 @@ from pathlib import Path
 
 import sqlite_vec
 
-from pipeline.extract import extract_sections
+from pipeline.extract import extract_flow, extract_sections
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent
@@ -65,10 +65,15 @@ def main() -> None:
     for act in manifest["acts"]:
         pdf = ROOT / act["pdf"]
         source_sha = sha256_file(pdf)
-        result = extract_sections(str(pdf))
+        gap = act.get("max_gap", 1)
+        if act.get("mode") == "flow":
+            result = extract_flow(str(pdf), max_gap=gap)
+        else:
+            result = extract_sections(str(pdf), max_gap=gap)
+        unit = act.get("unit", "Section").upper()
         expected = act["expected_last_section"]
         assert result.last_section == expected, (
-            f"{act['statute_name']}: extracted up to section {result.last_section}, "
+            f"{act['statute_name']}: extracted up to {result.last_section}, "
             f"expected {expected}. Refusing to pack a partial act."
         )
         if result.dropped:
@@ -86,7 +91,7 @@ def main() -> None:
             if chunk.section_number not in section_nodes:
                 node_id += 1
                 section_nodes[chunk.section_number] = node_id
-                label = f"{act['statute_name']} — Section {chunk.section_number}"
+                label = f"{act['statute_name']} — {unit.title()} {chunk.section_number}"
                 nodes.append((node_id, "SECTION", label, act["statute_name"], chunk.section_number))
                 edge_id += 1
                 edges.append((edge_id, node_id, statute_node, "PART_OF", 1.0))
@@ -100,6 +105,7 @@ def main() -> None:
                     "node_id": section_nodes[chunk.section_number],
                     "statute_name": act["statute_name"],
                     "statute_name_hi": act["statute_name_hi"],
+                    "unit": unit,
                     "section_number": chunk.section_number,
                     "clause": None,
                     "page_number": chunk.page_number,
@@ -158,7 +164,7 @@ def main() -> None:
 
     conn.executemany(
         "INSERT INTO statute_chunks VALUES (:id,:node_id,:statute_name,:statute_name_hi,"
-        ":section_number,:clause,:page_number,:chunk_text_en,:chunk_text_hi,"
+        ":unit,:section_number,:clause,:page_number,:chunk_text_en,:chunk_text_hi,"
         ":source_document,:source_sha256,:compilation_date)",
         chunks_rows,
     )

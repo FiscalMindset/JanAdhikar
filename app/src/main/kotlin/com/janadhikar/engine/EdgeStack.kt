@@ -12,8 +12,10 @@ import com.janadhikar.memory.vec.SqliteVecBridge
 import com.janadhikar.stt.AudioCapture
 import com.janadhikar.stt.WhisperBridge
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import java.io.Closeable
 import java.io.File
@@ -21,18 +23,26 @@ import java.io.File
 /**
  * The explicit production object graph — no DI framework, by policy: the
  * wiring of a safety-critical pipeline should read top-to-bottom (see
- * JanadhikarApp). Built once via [create] off the main thread, then warm for
- * the life of the process so Trigger → Active stays under the 400 ms budget.
+ * JanadhikarApp).
+ *
+ * [create] returns as soon as the TEXT path is ready (DB + query embedder), so
+ * the app becomes usable fast. The heavy voice model (whisper, ~180 MB, needed
+ * only for speech) and the LLM load in the BACKGROUND and are awaited lazily on
+ * first use — a typed query never waits for them.
  */
 class EdgeStack private constructor(
     val engine: IncidentEngine,
     private val closeables: List<Closeable>,
+    private val lazyCloseables: List<Deferred<Closeable?>>,
     private val scope: CoroutineScope,
 ) : Closeable {
 
     override fun close() {
         engine.cancel()
         closeables.forEach(Closeable::close)
+        lazyCloseables.forEach { deferred ->
+            if (deferred.isCompleted) runCatching { deferred.getCompleted() }.getOrNull()?.close()
+        }
     }
 
     companion object {
@@ -52,7 +62,7 @@ class EdgeStack private constructor(
                 expectedDim = SqliteVecBridge.EMBEDDING_DIM,
             )
 
-            // ── Edge models: provisioned from APK assets, memory-mapped ──
+            // ── Query embedder: ON the text critical path, loaded eagerly ──
             val tokenizer = context.assets.open(QueryEmbedder.VOCAB_ASSET).bufferedReader().useLines {
                 com.janadhikar.memory.SentencePieceTokenizer(
                     com.janadhikar.memory.SentencePieceTokenizer.loadVocab(it),
@@ -62,14 +72,21 @@ class EdgeStack private constructor(
                 modelFile = provisionAsset(context, QueryEmbedder.MODEL_ASSET),
                 tokenizer = tokenizer,
             )
-            val whisper = WhisperBridge.open(provisionAsset(context, WHISPER_MODEL_ASSET))
 
+            // ── Voice model + LLM: OFF the critical path. Start loading now in
+            //    the background; the engine awaits them only when actually used.
+            val whisperDeferred: Deferred<WhisperBridge?> = scope.async {
+                runCatching {
+                    WhisperBridge.open(provisionAsset(context, WHISPER_MODEL_ASSET))
+                }.getOrNull()
+            }
             // Gemma is license-gated (see scripts/fetch_models.sh). Without it,
-            // directives fall back to verbatim statute text — always safe, and
-            // the retrieval shield stays fully functional.
-            val gemma = runCatching {
-                GemmaTranslator(context, provisionAsset(context, GemmaTranslator.MODEL_ASSET))
-            }.getOrNull()
+            // directives fall back to verbatim statute text — always safe.
+            val gemmaDeferred: Deferred<GemmaTranslator?> = scope.async {
+                runCatching {
+                    GemmaTranslator(context, provisionAsset(context, GemmaTranslator.MODEL_ASSET))
+                }.getOrNull()
+            }
 
             val retriever = HybridRetriever(
                 dao = db.dao(),
@@ -81,13 +98,17 @@ class EdgeStack private constructor(
                 scope = scope,
                 audioSource = { AudioCapture().stream() },
                 transcriber = { pcm ->
-                    withContext(Dispatchers.Default) {
-                        whisper.transcribe(pcm, WhisperBridge.Lang.AUTO)
+                    // First voice use awaits the background whisper load.
+                    when (val whisper = whisperDeferred.await()) {
+                        null -> ""
+                        else -> withContext(Dispatchers.Default) {
+                            whisper.transcribe(pcm, WhisperBridge.Lang.AUTO)
+                        }
                     }
                 },
                 retrieve = { query -> retriever.retrieve(query.text) },
                 translate = { citation, language ->
-                    gemma?.translate(citation, language) ?: Directive(
+                    gemmaDeferred.await()?.translate(citation, language) ?: Directive(
                         text = VerbatimStatuteText.from(citation, language).value,
                         language = language,
                         isVerbatimFallback = true,
@@ -98,15 +119,16 @@ class EdgeStack private constructor(
 
             EdgeStack(
                 engine = engine,
-                closeables = listOfNotNull(gemma, whisper, embedder, vec, Closeable { db.close() }),
+                closeables = listOf(embedder, vec, Closeable { db.close() }),
+                lazyCloseables = listOf(whisperDeferred, gemmaDeferred),
                 scope = scope,
             )
         }
 
         /** Copies a model out of assets once; models are immutable per APK. */
         private fun provisionAsset(context: Context, assetPath: String): File {
-            val target = File(context.noBackupFilesDir, assetPath.substringAfterLast('/'))
-            target.parentFile?.mkdirs() // no_backup/ may not exist on a fresh install
+            val dir = context.noBackupFilesDir.apply { mkdirs() }
+            val target = File(dir, assetPath.substringAfterLast('/'))
             val assetSize = context.assets.openFd(assetPath).use { it.length }
             if (target.length() != assetSize) {
                 context.assets.open(assetPath).use { input ->

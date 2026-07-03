@@ -146,12 +146,16 @@ class HybridRetriever(
          * positive here is a safety incident.
          *
          * Current value from knowledge-pipeline/eval_queries.py on the
-         * 2026-07-03 artifact (paraphrase-multilingual-MiniLM-L12-v2):
-         *   best junk-query sim   0.287  ← must stay below
+         * 2026-07-03 5-statute artifact (paraphrase-multilingual-MiniLM-L12-v2,
+         * Constitution + BNS + BNSS + BSA + Motor Vehicles):
+         *   best junk-query sim   0.367  ← must stay below (a false match here
+         *                                   is a safety incident, Rule 3)
          *   worst genuine-hit sim 0.388  ← must stay above
-         *   Precision@1 7/14, Hit@3 12/14
+         *   Precision@1 11/19, Hit@3 16/19
+         * 0.38 sits in that window: it rejects every junk query and keeps every
+         * genuine hit. The margin is deliberately biased toward refusal.
          */
-        const val CONFIDENCE_THRESHOLD = 0.34f
+        const val CONFIDENCE_THRESHOLD = 0.38f
 
         const val K_NEIGHBORS = 8
         private const val MAX_RELATED = 4

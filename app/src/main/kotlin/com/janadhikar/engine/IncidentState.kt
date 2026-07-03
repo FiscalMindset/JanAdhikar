@@ -23,11 +23,17 @@ sealed interface IncidentState {
     /** Trigger screen: pulsing mic + typed-query field. */
     data object Idle : IncidentState
 
-    /** Live capture/processing. [transcript] grows as whisper re-decodes. */
+    /**
+     * Live capture/processing. [transcript] grows as whisper re-decodes.
+     * [isVoice] is true only for a microphone session — the foreground
+     * microphone service is tied to this, so a typed query (isVoice = false)
+     * never starts it (and never trips the FGS-microphone permission check).
+     */
     data class Active(
         val transcript: String,
         val phase: AgentPhase,
         val elapsedMillis: Long,
+        val isVoice: Boolean,
     ) : IncidentState
 
     /** Resolution — verified match. The Legal Shield. */
