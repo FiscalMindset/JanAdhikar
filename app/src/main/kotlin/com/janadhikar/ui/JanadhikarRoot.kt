@@ -1,8 +1,12 @@
 package com.janadhikar.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -11,14 +15,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.janadhikar.engine.Answer
 import com.janadhikar.engine.CaptureState
 import com.janadhikar.engine.EdgeStack
+import com.janadhikar.engine.Session
 import com.janadhikar.ui.theme.JanadhikarTheme
 import com.janadhikar.ui.theme.Palette
 import kotlinx.coroutines.flow.StateFlow
 
 /** Which bare-act PDF page the in-app viewer should open. */
 private data class PdfTarget(val asset: String, val page: Int, val title: String)
+
+/** Sentinel id for the live, not-yet-archived conversation shown atop History. */
+private const val CURRENT_SESSION_ID = Long.MIN_VALUE
 
 /**
  * Root: the conversational assistant. A scrolling thread of questions and
@@ -33,7 +42,15 @@ fun JanadhikarRoot(
 ) {
     JanadhikarTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = Palette.Black) {
-            Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+            // Pad for system bars + display cutout only — NOT the IME. The
+            // keyboard is handled by imePadding() on the input bar alone, so the
+            // keyboard height is never counted twice (which previously shoved the
+            // input box into the middle of the screen and hid the conversation).
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout)),
+            ) {
                 val edgeStack by edgeStackFlow.collectAsState()
                 val stack = edgeStack
 
@@ -65,10 +82,26 @@ fun JanadhikarRoot(
 
                 if (showHistory) {
                     val sessions by stack.engine.sessions.collectAsState()
+                    // Show the CURRENT (unarchived) conversation live at the top,
+                    // so History reflects it immediately — no need to start a new
+                    // chat first for it to appear.
+                    val currentSession = if (turns.any { it.answer is Answer.Grounded }) {
+                        Session(
+                            id = CURRENT_SESSION_ID,
+                            title = "🟢 " + turns.firstOrNull()?.query.orEmpty().ifBlank { "Current chat" },
+                            turns = turns,
+                        )
+                    } else {
+                        null
+                    }
                     HistoryScreen(
-                        sessions = sessions,
-                        onOpen = { stack.engine.openSession(it); showHistory = false },
-                        onDelete = stack.engine::deleteSession,
+                        sessions = listOfNotNull(currentSession) + sessions,
+                        onOpen = { s ->
+                            // Tapping the current one just returns to it; past ones reopen.
+                            if (s.id != CURRENT_SESSION_ID) stack.engine.openSession(s)
+                            showHistory = false
+                        },
+                        onDelete = { s -> if (s.id != CURRENT_SESSION_ID) stack.engine.deleteSession(s) },
                         onBack = { showHistory = false },
                     )
                     return@Box

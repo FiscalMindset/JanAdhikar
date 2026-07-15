@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -457,6 +458,9 @@ private fun InputBar(engineReady: Boolean, onAsk: (String) -> Unit, onMic: () ->
         modifier = Modifier
             .fillMaxWidth()
             .background(Palette.Black)
+            // Lift ONLY the input bar above the keyboard. The Box already handles
+            // system bars, so this is the single place the IME inset is applied.
+            .imePadding()
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -16,17 +16,33 @@ class LlamaBridge private constructor(private var handle: Long) : Closeable {
 
     private val mutex = Mutex()
 
-    suspend fun generate(prompt: String, maxTokens: Int): String = withContext(Dispatchers.Default) {
-        mutex.withLock {
-            if (handle == 0L) "" else nativeGenerate(handle, prompt, maxTokens)
-        }
+    /** Native calls this once per completed UTF-8 chunk during streaming. */
+    fun interface TokenSink {
+        fun onToken(piece: String)
     }
+
+    /**
+     * Generates a completion. If [onToken] is given, each new piece is delivered
+     * as it is produced (streaming) AND the full text is returned; otherwise it
+     * just returns the whole completion.
+     */
+    suspend fun generate(prompt: String, maxTokens: Int, onToken: ((String) -> Unit)? = null): String =
+        withContext(Dispatchers.Default) {
+            mutex.withLock {
+                if (handle == 0L) {
+                    ""
+                } else {
+                    val sink = onToken?.let { cb -> TokenSink { piece -> cb(piece) } }
+                    nativeGenerate(handle, prompt, maxTokens, sink)
+                }
+            }
+        }
 
     override fun close() {
         if (handle != 0L) { nativeFree(handle); handle = 0L }
     }
 
-    private external fun nativeGenerate(handle: Long, prompt: String, maxTokens: Int): String
+    private external fun nativeGenerate(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink?): String
     private external fun nativeFree(handle: Long)
     private external fun nativeLoad(modelPath: String, nCtx: Int, nThreads: Int): Long
 

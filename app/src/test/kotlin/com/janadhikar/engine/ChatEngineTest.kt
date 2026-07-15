@@ -86,18 +86,21 @@ class ChatEngineTest {
     }
 
     @Test
-    fun `hindi question resolves in hindi`() = runTest {
+    fun `hindi question is answered in accurate english`() = runTest {
+        // The bundled law text is English and the small on-device model garbles
+        // Hindi legal translation, so every generated explanation is produced in
+        // English (accuracy over language) — even for a Hindi/Hinglish question.
         var used: AppLanguage? = null
         val engine = ChatEngine(
             scope = backgroundScope,
             audioSource = { MutableSharedFlow() },
             transcriber = { "" },
             retrieve = { match },
-            translate = { _, lang, _ -> used = lang; Directive("व्याख्या", lang, false) },
+            translate = { _, lang, _ -> used = lang; Directive("explanation", lang, false) },
             clock = { 0L },
         )
         engine.ask("पुलिस गिरफ्तारी का कारण नहीं बता रही")
         runCurrent()
-        assertThat(used).isEqualTo(AppLanguage.HINDI)
+        assertThat(used).isEqualTo(AppLanguage.ENGLISH)
     }
 }

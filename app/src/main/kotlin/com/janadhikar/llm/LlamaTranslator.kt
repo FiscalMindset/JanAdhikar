@@ -37,15 +37,19 @@ class LlamaTranslator private constructor(
         val verbatim = VerbatimStatuteText.from(citation, output)
         val prompt = PromptContract.buildChatML(verbatim, output, style)
         val startedAt = System.currentTimeMillis()
-        val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) { llama.generate(prompt, MAX_NEW_TOKENS) }
+        // Stream tokens live to onDelta (incremental pieces) as they are
+        // generated so the answer appears word-by-word instead of after a long
+        // silent wait. The returned Directive carries the final sanitized text,
+        // which the caller swaps in once generation ends (mirrors GemmaTranslator).
+        val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) {
+            llama.generate(prompt, MAX_NEW_TOKENS) { piece -> onDelta(piece) }
+        }
         val elapsed = System.currentTimeMillis() - startedAt
 
         return when (val verdict = raw?.let(OutputSanitizer::inspect)) {
-            is OutputSanitizer.Verdict.Clean -> {
-                onDelta(verdict.text)
+            is OutputSanitizer.Verdict.Clean ->
                 Directive(verdict.text, output, isVerbatimFallback = false, modelId = modelLabel,
                     generationMillis = elapsed, approxTokens = verdict.text.length / 4)
-            }
             else -> Directive(verbatim.value, output, isVerbatimFallback = true)
         }
     }
@@ -59,10 +63,11 @@ class LlamaTranslator private constructor(
         val combined = VerbatimStatuteText.combined(citations, output)
         val prompt = PromptContract.buildSynthesisChatML(combined, output)
         val startedAt = System.currentTimeMillis()
-        val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) { llama.generate(prompt, 200) }
+        val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) {
+            llama.generate(prompt, 200) { piece -> onDelta(piece) }
+        }
         val elapsed = System.currentTimeMillis() - startedAt
         return (raw?.let(OutputSanitizer::inspect) as? OutputSanitizer.Verdict.Clean)?.let {
-            onDelta(it.text)
             Directive(it.text, output, isVerbatimFallback = false, modelId = modelLabel, generationMillis = elapsed)
         }
     }
@@ -75,9 +80,10 @@ class LlamaTranslator private constructor(
         val prompt = "<|im_start|>system\nExplain what a word or phrase means in $lang, in one or two " +
             "short sentences a class-5 student understands. Give its everyday meaning; no extra facts." +
             "<|im_end|>\n<|im_start|>user\n\"$clean\"<|im_end|>\n<|im_start|>assistant\n"
-        val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) { llama.generate(prompt, 160) }
+        val raw = withTimeoutOrNull(INFERENCE_TIMEOUT_MS) {
+            llama.generate(prompt, 160) { piece -> onDelta(piece) }
+        }
         val text = raw?.trim().orEmpty().ifBlank { "Sorry, I could not explain that word." }
-        onDelta(text)
         return Directive(text, output, isVerbatimFallback = false, modelId = meaningLabel)
     }
 

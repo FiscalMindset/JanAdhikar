@@ -116,13 +116,17 @@ HF_TOKEN=hf_xxx ./scripts/fetch_models.sh
 
 | Model | Runtime | Download | Speed | Best for |
 |---|---|---|---|---|
-| **⚡ Fast — Qwen 2.5 0.5B** *(default)* | llama.cpp (CPU, Q4_0) | auto, ~350 MB | Quick | Everyday lookups, budget phones |
-| **Balanced — Qwen 2.5 1.5B** | llama.cpp (CPU, Q4_0) | auto, ~1 GB | Moderate | Best Hindi, richest answers |
+| **Balanced — Qwen 2.5 1.5B** *(default)* | llama.cpp (CPU, Q4_0) | auto, ~1 GB | Moderate | **Best accuracy** & Hindi, richest answers |
+| **⚡ Fast — Qwen 2.5 0.5B** | llama.cpp (CPU, Q4_0) | auto, ~350 MB | Quick | Speed on budget phones (lower accuracy) |
 | **Gemma 3 1B / 4B** | MediaPipe (accelerated) | manual `.task` | Fast | Devices without CPU dot-product |
 
-Speed comes from **Q4_0 repacking + Flash Attention + ARM dot-product kernels**
-(≈ 4× faster than a naïve build). On CPUs without dot-product the app safely
-falls back to Gemma / verbatim.
+The **1.5B is the default** because it follows the retrieved bare-act text
+faithfully — the 0.5B is faster per token but drifts and can mix up provisions,
+which is unacceptable for legal answers. Speed comes from **Q4_0 repacking +
+Flash Attention + ARM dot-product kernels** (≈ 4× faster than a naïve build)
+**plus live token streaming** — the answer is written out word-by-word as it
+generates, so it feels responsive instead of a long silent wait. On CPUs without
+dot-product the app safely falls back to Gemma / verbatim.
 
 ---
 

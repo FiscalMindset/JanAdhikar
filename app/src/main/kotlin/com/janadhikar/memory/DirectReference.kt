@@ -11,8 +11,14 @@ object DirectReference {
     /** unit is "ARTICLE" or "SECTION"; [statuteHint] narrows which act, if named. */
     data class Ref(val unit: String, val number: String, val statuteHint: String?)
 
-    private val ARTICLE = Regex("""\bart(?:icle)?\.?\s*(\d+\s*[A-Za-z]?)\b""", RegexOption.IGNORE_CASE)
-    private val SECTION = Regex("""\b(?:sec(?:tion)?|s\.)\s*(\d+\s*[A-Za-z]?)\b""", RegexOption.IGNORE_CASE)
+    // Also match the Hinglish/Hindi names a citizen actually types: "anuchhed 21"
+    // (अनुच्छेद = article) and "dhara 302" (धारा = section). Without these, a
+    // Hinglish reference fell through to fuzzy search and drifted to the wrong
+    // provision. "anuch[a-z]*" covers spelling variants (anuchhed, anucched…).
+    private val ARTICLE =
+        Regex("""(?:\b(?:art(?:icle)?|anuch[a-z]*)|अनुच्छेद)\.?\s*(\d+\s*[A-Za-z]?)\b""", RegexOption.IGNORE_CASE)
+    private val SECTION =
+        Regex("""(?:\b(?:sec(?:tion)?|s\.|dhaara|dhara)|धारा)\.?\s*(\d+\s*[A-Za-z]?)\b""", RegexOption.IGNORE_CASE)
 
     // Common ways citizens name each act (incl. the old codes they map to).
     private val STATUTE_HINTS = listOf(

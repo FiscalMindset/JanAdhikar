@@ -134,7 +134,15 @@ class ChatEngine(
                 when (val result = retrieve(query)) {
                     is RetrievalResult.NoVerifiedStatute -> Answer.NoStatute
                     is RetrievalResult.Match -> {
-                        val language = preferredLanguage() ?: query.language
+                        // The generated explanation is ALWAYS produced in English.
+                        // The bundled statute text is English, and the small
+                        // on-device model garbles Hindi legal translation — it
+                        // hallucinates confidently, which is unacceptable for a
+                        // legal app. So for Hindi/Hinglish questions we answer in
+                        // accurate English and still show the verbatim law card.
+                        // (Accuracy-over-language product decision; revisit if a
+                        // real Hindi legal corpus + stronger model ship.)
+                        val language = AppLanguage.ENGLISH
                         val citations = listOf(result.primary) + result.related
                         fun grounded(directive: Directive, streaming: Boolean) = Answer.Grounded(
                             explanation = directive,
@@ -200,9 +208,9 @@ class ChatEngine(
         appendTurn(Turn(id, label, Answer.Thinking))
         scope.launch {
             val startedAt = clock()
-            val language = preferredLanguage()
-                ?: (_conversation.value.lastOrNull { it.answer is Answer.Grounded }?.answer as? Answer.Grounded)
-                    ?.explanation?.language ?: AppLanguage.ENGLISH
+            // Generated in English — the on-device model is only accurate in
+            // English (see ask()); word meanings in garbled Hindi would mislead.
+            val language = AppLanguage.ENGLISH
             fun meaning(directive: Directive, streaming: Boolean) = Answer.Grounded(
                 explanation = directive, citations = emptyList(), confidence = 1f,
                 redirectedFromSuperseded = false, streaming = streaming,
@@ -234,7 +242,8 @@ class ChatEngine(
         appendTurn(Turn(id, rawQuery, Answer.Thinking))
         scope.launch {
             val startedAt = clock()
-            val language = preferredLanguage() ?: previous.explanation.language
+            // English generation only — the on-device model garbles Hindi (see ask()).
+            val language = AppLanguage.ENGLISH
             val primary = previous.citations.first()
             val style = when (FollowUp.classify(rawQuery)) {
                 FollowUp.Intent.EXAMPLE -> PromptContract.Style.EXAMPLE

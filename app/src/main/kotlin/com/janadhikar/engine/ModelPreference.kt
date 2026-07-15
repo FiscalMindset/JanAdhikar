@@ -4,9 +4,11 @@ import android.content.Context
 
 /**
  * Which answer model the user chose.
- *  - QWEN_SMALL (default): Qwen 2.5 0.5B — fast even on budget phones, small
- *    download (~350 MB), decent multilingual. Best first experience.
- *  - QWEN: Qwen 2.5 1.5B — best Hindi/quality, but slow on low-end CPUs.
+ *  - QWEN (default): Qwen 2.5 1.5B — best accuracy + Hindi. It follows the
+ *    retrieved legal text faithfully (the 0.5B drifts and mixes provisions),
+ *    and with token streaming it stays responsive even on mid-range CPUs.
+ *  - QWEN_SMALL: Qwen 2.5 0.5B — smaller download (~350 MB), fastest tokens,
+ *    for budget phones that prefer speed over the richest accuracy.
  *  - GEMMA: Gemma 3 (MediaPipe) — hardware-accelerated; needs the .task file.
  * Changing it takes effect on the next app start (the model loads at launch).
  */
@@ -19,7 +21,7 @@ object ModelPreference {
 
     fun get(context: Context): Choice {
         val v = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
-        return runCatching { Choice.valueOf(v ?: "") }.getOrDefault(Choice.QWEN_SMALL)
+        return runCatching { Choice.valueOf(v ?: "") }.getOrDefault(Choice.QWEN)
     }
 
     fun set(context: Context, choice: Choice) {

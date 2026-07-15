@@ -18,6 +18,19 @@ struct LlamaHandle {
     const llama_vocab *vocab = nullptr;
     llama_sampler *smpl = nullptr;
 };
+
+// Largest index <= s.size() that ends on a UTF-8 character boundary, so we never
+// hand a split multi-byte sequence (e.g. a half-written Devanagari glyph) to
+// NewStringUTF while streaming token pieces. Returns s.size() if the final char
+// is complete, otherwise the start of the incomplete trailing char.
+size_t utf8_safe_end(const std::string &s, size_t from) {
+    size_t p = s.size();
+    while (p > from && ((unsigned char) s[p - 1] & 0xC0) == 0x80) p--; // skip continuation bytes
+    if (p == from) return from;
+    unsigned char lead = (unsigned char) s[p - 1];
+    int len = (lead & 0x80) == 0 ? 1 : lead >= 0xF0 ? 4 : lead >= 0xE0 ? 3 : lead >= 0xC0 ? 2 : 1;
+    return (p - 1 + (size_t) len <= s.size()) ? s.size() : (p - 1);
+}
 }
 
 extern "C" JNIEXPORT jlong JNICALL
@@ -46,7 +59,9 @@ Java_com_janadhikar_llm_LlamaBridge_nativeLoad(
     h->ctx = ctx;
     h->vocab = llama_model_get_vocab(model);
     llama_sampler *smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
-    // Low-temperature sampling: coherent, near-deterministic, still natural.
+    // Low-temperature sampling: coherent, near-deterministic, still natural. A
+    // light repetition penalty avoids the occasional stuck loop on long answers.
+    llama_sampler_chain_add(smpl, llama_sampler_init_penalties(64, 1.1f, 0.0f, 0.0f));
     llama_sampler_chain_add(smpl, llama_sampler_init_top_k(40));
     llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.3f));
     llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
@@ -57,13 +72,23 @@ Java_com_janadhikar_llm_LlamaBridge_nativeLoad(
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_janadhikar_llm_LlamaBridge_nativeGenerate(
-        JNIEnv *env, jobject, jlong handle, jstring jprompt, jint maxTokens) {
+        JNIEnv *env, jobject, jlong handle, jstring jprompt, jint maxTokens, jobject sink) {
     auto *h = reinterpret_cast<LlamaHandle *>(handle);
     if (!h) return env->NewStringUTF("");
 
     const char *cprompt = env->GetStringUTFChars(jprompt, nullptr);
     std::string prompt(cprompt);
     env->ReleaseStringUTFChars(jprompt, cprompt);
+
+    // Optional per-token callback so Kotlin can render the answer as it is
+    // written (like ChatGPT) instead of waiting for the whole completion — the
+    // single biggest perceived-speed win, at zero cost to the output text.
+    jmethodID onToken = nullptr;
+    if (sink) {
+        jclass sinkCls = env->GetObjectClass(sink);
+        onToken = env->GetMethodID(sinkCls, "onToken", "(Ljava/lang/String;)V");
+        env->DeleteLocalRef(sinkCls);
+    }
 
     // Fresh generation → wipe the KV cache from any previous call.
     llama_memory_clear(llama_get_memory(h->ctx), true);
@@ -78,6 +103,7 @@ Java_com_janadhikar_llm_LlamaBridge_nativeGenerate(
     }
 
     std::string result;
+    size_t flushed = 0; // bytes of `result` already streamed to the sink
     llama_batch batch = llama_batch_get_one(tokens.data(), (int32_t) tokens.size());
     for (int i = 0; i < maxTokens; i++) {
         if (llama_decode(h->ctx, batch) != 0) { LOGE("decode failed"); break; }
@@ -87,7 +113,23 @@ Java_com_janadhikar_llm_LlamaBridge_nativeGenerate(
         int n = llama_token_to_piece(h->vocab, tok, piece, sizeof(piece), 0, true);
         if (n < 0) break;
         result.append(piece, n);
+        // Stream everything up to the last complete UTF-8 char boundary.
+        if (onToken) {
+            size_t end = utf8_safe_end(result, flushed);
+            if (end > flushed) {
+                jstring chunk = env->NewStringUTF(result.substr(flushed, end - flushed).c_str());
+                env->CallVoidMethod(sink, onToken, chunk);
+                env->DeleteLocalRef(chunk);
+                flushed = end;
+            }
+        }
         batch = llama_batch_get_one(&tok, 1);
+    }
+    // Flush any trailing bytes (should be a complete char by end of generation).
+    if (onToken && flushed < result.size()) {
+        jstring chunk = env->NewStringUTF(result.substr(flushed).c_str());
+        env->CallVoidMethod(sink, onToken, chunk);
+        env->DeleteLocalRef(chunk);
     }
     return env->NewStringUTF(result.c_str());
 }
